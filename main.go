@@ -38,27 +38,32 @@ func main() {
 	}
 	var key *ipfs.Key
 	for _, k := range keys {
+		//fmt.Printf("Got key %s\n", k.Name)
 		if k.Name == *keyName {
-			key = key
+			key = k
 		}
 	}
 	if key == nil {
 		key, err = ipfsShell.KeyGen(ctx, *keyName)
 		if err != nil {
-			logger.Fatalf("Can't crate  keys %s", keyName)
+			logger.Fatalf("Can't create keys %s", *keyName)
 		}
 	}
 
 	current, err := ipfsShell.Resolve(key.Id)
 	if err != nil {
-		logger.Fatalf("can't resolve key: %s", err)
+		if strings.Contains(err.Error(), "could not resolve name") {
+			current = ""
+		} else {
+			logger.Fatalf("can't resolve key: %s", err)
+		}
 	}
 
 	cid, err := ipfsShell.Add(strings.NewReader(*sMsg))
 	if err != nil {
 		logger.Fatalf("error adding content: %s", err)
 	}
-	fmt.Printf("%s added %s", *sMsg, cid)
+	fmt.Printf("%s added %s\n", *sMsg, cid)
 	post := Post{
 		Previous: current,
 		Content:  cid,
@@ -68,11 +73,11 @@ func main() {
 	if err != nil {
 		logger.Fatalf("error adding post: %s", err)
 	}
-	fmt.Printf("%s added %s", jpost, postcid)
+	fmt.Printf("%s added %s\n", jpost, postcid)
 	resp, err := ipfsShell.PublishWithDetails(postcid, key.Name, 0, 90, false)
 	if err != nil {
 		logger.Fatalf("Failed to publish %s", err)
 	}
-	fmt.Printf("Posted %+v", resp)
+	fmt.Printf("Posted %+v\n", resp)
 
 }
