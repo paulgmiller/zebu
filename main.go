@@ -15,6 +15,11 @@ import (
 	ipfs "github.com/ipfs/go-ipfs-api"
 )
 
+type User struct {
+	LastPost string
+	Follows  []string
+}
+
 type Post struct {
 	Previous string
 	Content  string
@@ -22,7 +27,6 @@ type Post struct {
 }
 
 func main() {
-
 	ipfsShell := ipfs.NewShell("localhost:5001")
 
 	sMsg := flag.String("m", "", "what do you want to post?")
@@ -55,29 +59,47 @@ func main() {
 	post(ipfsShell, key, *sMsg)
 }
 
+func readJson(ipfsShell *ipfs.Shell, cid string, obj interface{}) error {
+	reader, err := ipfsShell.Cat(cid)
+	defer reader.Close()
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	dec := json.NewDecoder(reader)
+	return dec.Decode(obj)
+}
+
+func writeJson(ipfsShell *ipfs.Shell, obj interface{}) (string, error) {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	err := enc.Encode(obj)
+	if err != nil {
+		return "", err
+	}
+	return ipfsShell.Add(&b)
+}
+
 func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {
 	head, err := ipfsShell.Resolve(key.Id)
 	if err != nil {
 		log.Fatalf("can't resolve key %s. Maybe post something %s", key.Name, err)
 	}
 	for head != "" {
-		reader, err := ipfsShell.Cat(head)
+		var post Post
+		err := readJson(ipfsShell, head, &post)
 		if err != nil {
 			log.Fatalf("can't resolve key %s. Maybe post something %s", key.Name, err)
 		}
-		defer reader.Close()
-		dec := json.NewDecoder(reader)
-		var post Post
-		err = dec.Decode(&post)
-		if err != nil {
-			log.Fatalf("couldn't decode post %v", err)
-		}
 		fmt.Println(post.Content)
 		if !post.Created.IsZero() {
-			fmt.Println("posted at %s", post.Created)
+			fmt.Printf("posted at %s\n", post.Created)
 		}
 		contentreader, err := ipfsShell.Cat(post.Content)
-		defer reader.Close()
+		if err != nil {
+			log.Fatalf("can't get content %s: %s", post.Content, err)
+		}
+		defer contentreader.Close()
 		content, err := ioutil.ReadAll(contentreader)
 		if err != nil {
 			fmt.Println(err.Error())
@@ -106,17 +128,16 @@ func post(ipfsShell *ipfs.Shell, key *ipfs.Key, msg string) {
 	post := Post{
 		Previous: current,
 		Content:  cid,
-		Created:  time.Now(),
+		Created:  time.Now().UTC(),
 	}
-	jpost, _ := json.Marshal(post)
-	postcid, err := ipfsShell.Add(bytes.NewReader(jpost))
+	postcid, err := writeJson(ipfsShell, &post)
 	if err != nil {
 		log.Fatalf("error adding post: %s", err)
 	}
-	fmt.Printf("%s added %s as post %s", msg, cid, postcid)
+	fmt.Printf("%s added %s as post %s\n", msg, cid, postcid)
 	resp, err := ipfsShell.PublishWithDetails(postcid, key.Name, 0, 0, false)
 	if err != nil {
 		log.Fatalf("Failed to publish %s", err)
 	}
-	fmt.Printf("Posted to %s\n", resp)
+	fmt.Printf("Posted to %s\n", resp.Name)
 }
