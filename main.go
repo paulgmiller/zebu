@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
+	"time"
 
 	//https://pkg.go.dev/github.com/ipfs/go-ipfs-api#Key
 	ipfs "github.com/ipfs/go-ipfs-api"
@@ -17,6 +18,7 @@ import (
 type Post struct {
 	Previous string
 	Content  string
+	Created  time.Time //can't actually trust this
 }
 
 func main() {
@@ -35,7 +37,6 @@ func main() {
 	}
 	var key *ipfs.Key
 	for _, k := range keys {
-		//fmt.Printf("Got key %s\n", k.Name)
 		if k.Name == *keyName {
 			key = k
 		}
@@ -72,6 +73,9 @@ func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {
 			log.Fatalf("couldn't decode post %v", err)
 		}
 		fmt.Println(post.Content)
+		if !post.Created.IsZero() {
+			fmt.Println("posted at %s", post.Created)
+		}
 		contentreader, err := ipfsShell.Cat(post.Content)
 		defer reader.Close()
 		content, err := ioutil.ReadAll(contentreader)
@@ -102,6 +106,7 @@ func post(ipfsShell *ipfs.Shell, key *ipfs.Key, msg string) {
 	post := Post{
 		Previous: current,
 		Content:  cid,
+		Created:  time.Now(),
 	}
 	jpost, _ := json.Marshal(post)
 	postcid, err := ipfsShell.Add(bytes.NewReader(jpost))
@@ -113,5 +118,5 @@ func post(ipfsShell *ipfs.Shell, key *ipfs.Key, msg string) {
 	if err != nil {
 		log.Fatalf("Failed to publish %s", err)
 	}
-	fmt.Printf("Posted %+v\n", resp)
+	fmt.Printf("Posted to %s\n", resp)
 }
