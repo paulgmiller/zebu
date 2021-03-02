@@ -26,12 +26,15 @@ type Post struct {
 	Created  time.Time //can't actually trust this
 }
 
+const nobody = "nobody"
+
 func main() {
 	ipfsShell := ipfs.NewShell("localhost:5001")
 
 	sMsg := flag.String("m", "", "what do you want to post?")
 	keyName := flag.String("key", "zebu", "what ipns key are we using")
-
+	//follow := flag.String("follow", nobody, "add somone to your follows")
+	//unfollow := flag.String("unfollow", "nobody", "remove somone to your follows")
 	flag.Parse()
 	ctx := context.Background()
 
@@ -82,6 +85,19 @@ func writeJson(ipfsShell *ipfs.Shell, obj interface{}) (string, error) {
 
 func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {
 	head, err := ipfsShell.Resolve(key.Id)
+
+	var user User
+	usercid, err := ipfsShell.Resolve(key.Id)
+	if err != nil {
+		log.Fatalf("can't resolve key: %s", err)
+	}
+
+	err = readJson(ipfsShell, usercid, &user)
+	if err != nil {
+		log.Fatalf("error getting user : %s", err)
+	}
+	head = user.LastPost
+
 	if err != nil {
 		log.Fatalf("can't resolve key %s. Maybe post something %s", key.Name, err)
 	}
@@ -111,12 +127,21 @@ func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {
 }
 
 func post(ipfsShell *ipfs.Shell, key *ipfs.Key, msg string) {
-	current, err := ipfsShell.Resolve(key.Id)
+	var user User
+	usercid, err := ipfsShell.Resolve(key.Id)
 	if err != nil {
 		if strings.Contains(err.Error(), "could not resolve name") {
-			current = ""
+			user = User{
+				LastPost: "",
+				Follows:  []string{},
+			}
 		} else {
 			log.Fatalf("can't resolve key: %s", err)
+		}
+	} else {
+		err = readJson(ipfsShell, usercid, &user)
+		if err != nil {
+			log.Fatalf("error getting user : %s", err)
 		}
 	}
 
@@ -126,7 +151,7 @@ func post(ipfsShell *ipfs.Shell, key *ipfs.Key, msg string) {
 	}
 
 	post := Post{
-		Previous: current,
+		Previous: user.LastPost,
 		Content:  cid,
 		Created:  time.Now().UTC(),
 	}
@@ -135,9 +160,16 @@ func post(ipfsShell *ipfs.Shell, key *ipfs.Key, msg string) {
 		log.Fatalf("error adding post: %s", err)
 	}
 	fmt.Printf("%s added %s as post %s\n", msg, cid, postcid)
-	resp, err := ipfsShell.PublishWithDetails(postcid, key.Name, 0, 0, false)
+	user.LastPost = postcid
+	usercid, err = writeJson(ipfsShell, &user)
+	if err != nil {
+		log.Fatalf("error updating user: %s", err)
+	}
+
+	resp, err := ipfsShell.PublishWithDetails(usercid, key.Name, 0, 0, false)
 	if err != nil {
 		log.Fatalf("Failed to publish %s", err)
 	}
-	fmt.Printf("Posted to %s\n", resp.Name)
+
+	fmt.Printf("Posted user %s to %s\n", usercid, resp.Name)
 }
