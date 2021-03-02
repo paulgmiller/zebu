@@ -11,13 +11,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jjeffery/stringset"
+
 	//https://pkg.go.dev/github.com/ipfs/go-ipfs-api#Key
 	ipfs "github.com/ipfs/go-ipfs-api"
 )
 
 type User struct {
 	LastPost string
-	Follows  []string
+	Follows  *stringset.Set
 }
 
 type Post struct {
@@ -33,7 +35,7 @@ func main() {
 
 	sMsg := flag.String("m", "", "what do you want to post?")
 	keyName := flag.String("key", "zebu", "what ipns key are we using")
-	//follow := flag.String("follow", nobody, "add somone to your follows")
+	followee := flag.String("follow", nobody, "add somone to your follows")
 	//unfollow := flag.String("unfollow", "nobody", "remove somone to your follows")
 	flag.Parse()
 	ctx := context.Background()
@@ -53,6 +55,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Can't create keys %s", *keyName)
 		}
+	}
+
+	if *followee != nobody {
+		follow(ipfsShell, key, *followee)
+		return
 	}
 
 	if *sMsg == "" {
@@ -81,6 +88,37 @@ func writeJson(ipfsShell *ipfs.Shell, obj interface{}) (string, error) {
 		return "", err
 	}
 	return ipfsShell.Add(&b)
+}
+
+//TODO unfollow
+func follow(ipfsShell *ipfs.Shell, key *ipfs.Key, followee string) {
+	var user User
+	usercid, err := ipfsShell.Resolve(key.Id)
+	if err != nil {
+		if strings.Contains(err.Error(), "could not resolve name") {
+			user = User{}
+		} else {
+			log.Fatalf("can't resolve key: %s", err)
+		}
+	} else {
+		err = readJson(ipfsShell, usercid, &user)
+		if err != nil {
+			log.Fatalf("error getting user : %s", err)
+		}
+	}
+	user.Follows.Add(followee)
+	usercid, err = writeJson(ipfsShell, &user)
+	if err != nil {
+		log.Fatalf("error updating user: %s", err)
+	}
+
+	resp, err := ipfsShell.PublishWithDetails(usercid, key.Name, 0, 0, false)
+	if err != nil {
+		log.Fatalf("Failed to publish %s", err)
+	}
+	fmt.Printf("Following %s\n", user.Follows)
+	fmt.Printf("Posted user %s to %s\n", usercid, resp.Name)
+
 }
 
 func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {
@@ -131,10 +169,7 @@ func post(ipfsShell *ipfs.Shell, key *ipfs.Key, msg string) {
 	usercid, err := ipfsShell.Resolve(key.Id)
 	if err != nil {
 		if strings.Contains(err.Error(), "could not resolve name") {
-			user = User{
-				LastPost: "",
-				Follows:  []string{},
-			}
+			user = User{}
 		} else {
 			log.Fatalf("can't resolve key: %s", err)
 		}
