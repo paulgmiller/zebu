@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jjeffery/stringset"
+	//"github.com/jjeffery/stringset"
 
 	//https://pkg.go.dev/github.com/ipfs/go-ipfs-api#Key
 	ipfs "github.com/ipfs/go-ipfs-api"
@@ -19,7 +19,7 @@ import (
 
 type User struct {
 	LastPost string
-	Follows  *stringset.Set
+	Follows  []string
 }
 
 type Post struct {
@@ -32,7 +32,7 @@ const nobody = "nobody"
 
 func main() {
 	ipfsShell := ipfs.NewShell("localhost:5001")
-
+	//https://github.com/urfave/cli/blob/master/docs/v2/manual.md#subcommands
 	sMsg := flag.String("m", "", "what do you want to post?")
 	keyName := flag.String("key", "zebu", "what ipns key are we using")
 	followee := flag.String("follow", nobody, "add somone to your follows")
@@ -106,7 +106,7 @@ func follow(ipfsShell *ipfs.Shell, key *ipfs.Key, followee string) {
 			log.Fatalf("error getting user : %s", err)
 		}
 	}
-	user.Follows.Add(followee)
+	user.Follows = append(user.Follows, followee)
 	usercid, err = writeJson(ipfsShell, &user)
 	if err != nil {
 		log.Fatalf("error updating user: %s", err)
@@ -121,36 +121,65 @@ func follow(ipfsShell *ipfs.Shell, key *ipfs.Key, followee string) {
 
 }
 
-func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {
-	head, err := ipfsShell.Resolve(key.Id)
+func getPosts(ipfsShell *ipfs.Shell, user User, count int) ([]Post, error) {
 
-	var user User
-	usercid, err := ipfsShell.Resolve(key.Id)
-	if err != nil {
-		log.Fatalf("can't resolve key: %s", err)
-	}
-
-	err = readJson(ipfsShell, usercid, &user)
-	if err != nil {
-		log.Fatalf("error getting user : %s", err)
-	}
-	head = user.LastPost
-
-	if err != nil {
-		log.Fatalf("can't resolve key %s. Maybe post something %s", key.Name, err)
-	}
-	for head != "" {
+	head := user.LastPost
+	var posts []Post
+	for i := 0; head != "" && i < count; i++ {
 		var post Post
-		err := readJson(ipfsShell, head, &post)
-		if err != nil {
-			log.Fatalf("can't resolve key %s. Maybe post something %s", key.Name, err)
+		if err := readJson(ipfsShell, head, &post); err != nil {
+			return posts, fmt.Errorf("can't resolve content %s: %w", head, err)
 		}
+		posts = append(posts, post)
+		head = post.Previous
+	}
+	return posts, nil
+}
+
+func getUser(ipfsShell *ipfs.Shell, userlookup string) (User, error) {
+	/*if strings.Contains(userlookup, ".") {
+		net.LookupTXT(userlookup)
+	}*/
+
+	usercid, err := ipfsShell.Resolve(userlookup)
+	if err != nil {
+		return User{}, err
+	}
+	var user User
+	if err := readJson(ipfsShell, usercid, &user); err != nil {
+		return User{}, err
+	}
+	return user, nil
+}
+
+func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {
+
+	me, err := getUser(ipfsShell, key.Id)
+	if err != nil {
+		log.Fatalf("can't get user %s: %s", key.Id, err)
+	}
+	var followedposts []Post
+	for _, follow := range me.Follows {
+		f, err := getUser(ipfsShell, follow)
+		if err != nil {
+			log.Fatalf("can't get user %s: %s", key.Id, err)
+		}
+		posts, err := getPosts(ipfsShell, f, 10)
+		if err != nil {
+			log.Fatalf("can't get posts: %s", err)
+		}
+		followedposts = append(followedposts, posts...)
+	}
+	//sort the posts by creat time?
+	//add author
+	for _, post := range followedposts {
 		fmt.Println(post.Content)
 		if !post.Created.IsZero() {
 			fmt.Printf("posted at %s\n", post.Created)
 		}
 		contentreader, err := ipfsShell.Cat(post.Content)
 		if err != nil {
+			//just continue?
 			log.Fatalf("can't get content %s: %s", post.Content, err)
 		}
 		defer contentreader.Close()
@@ -160,7 +189,6 @@ func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {
 		}
 		fmt.Println(string(content))
 
-		head = post.Previous
 	}
 }
 
