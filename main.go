@@ -8,27 +8,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
-	//"github.com/jjeffery/stringset"
-
 	//https://pkg.go.dev/github.com/ipfs/go-ipfs-api#Key
+	"github.com/gin-gonic/gin"
+	"github.com/ipfs/go-dnslink"
 	ipfs "github.com/ipfs/go-ipfs-api"
 )
-
-type User struct {
-	LastPost string
-	Follows  []string
-}
-
-type Post struct {
-	Previous string
-	Content  string
-	Created  time.Time //can't actually trust this
-}
-
-const nobody = "nobody"
 
 func main() {
 	ipfsShell := ipfs.NewShell("localhost:5001")
@@ -36,6 +24,8 @@ func main() {
 	sMsg := flag.String("m", "", "what do you want to post?")
 	keyName := flag.String("key", "zebu", "what ipns key are we using")
 	followee := flag.String("follow", nobody, "add somone to your follows")
+	resolve := flag.String("resolve", nobody, "look them up")
+	serve := flag.Bool("serve", false, "serve up web ui")
 	//unfollow := flag.String("unfollow", "nobody", "remove somone to your follows")
 	flag.Parse()
 	ctx := context.Background()
@@ -57,8 +47,27 @@ func main() {
 		}
 	}
 
+	if *serve {
+		router := gin.Default()
+		router.LoadHTMLFiles("index.tmpl")
+		router.GET("/", serveHtml)
+		router.Run(":8080")
+	}
+
 	if *followee != nobody {
 		follow(ipfsShell, key, *followee)
+		return
+	}
+
+	if *resolve != nobody {
+		//usercid, err := ipfsShell.Resolve(*resolve)
+		link, err := dnslink.Resolve(*resolve)
+		if err != nil {
+			fmt.Println(err.Error())
+		} else {
+			fmt.Println(link)
+		}
+
 		return
 	}
 
@@ -122,7 +131,6 @@ func follow(ipfsShell *ipfs.Shell, key *ipfs.Key, followee string) {
 }
 
 func getPosts(ipfsShell *ipfs.Shell, user User, count int) ([]Post, error) {
-
 	head := user.LastPost
 	var posts []Post
 	for i := 0; head != "" && i < count; i++ {
@@ -136,10 +144,13 @@ func getPosts(ipfsShell *ipfs.Shell, user User, count int) ([]Post, error) {
 	return posts, nil
 }
 
+const ipnsprefix = "/ipns/"
+
 func getUser(ipfsShell *ipfs.Shell, userlookup string) (User, error) {
-	/*if strings.Contains(userlookup, ".") {
-		net.LookupTXT(userlookup)
-	}*/
+	link, err := dnslink.Resolve(userlookup)
+	if err != nil && strings.HasPrefix(link, ipnsprefix) {
+		userlookup = link[len(ipnsprefix):]
+	}
 
 	usercid, err := ipfsShell.Resolve(userlookup)
 	if err != nil {
@@ -150,6 +161,13 @@ func getUser(ipfsShell *ipfs.Shell, userlookup string) (User, error) {
 		return User{}, err
 	}
 	return user, nil
+}
+
+func serveHtml(c *gin.Context) {
+
+	c.HTML(http.StatusOK, "index.tmpl", gin.H{
+		"title": "Main website",
+	})
 }
 
 func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Zepu</title>
+	</head>
+	<body>
+		{{range .Posts}}
+            <div>{{ .Content }}</div>
+        {{else}}
+        <div><strong>No Posts</strong></div>
+        {{end}}
+	</body>
+</html>`
