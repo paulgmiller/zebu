@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
@@ -51,7 +50,13 @@ func main() {
 		router := gin.Default()
 		router.LoadHTMLFiles("index.tmpl")
 		router.GET("/", func(c *gin.Context) {
-			serveHtml(ipfsShell, key, c)
+			userfeed(ipfsShell, key, c)
+		})
+		router.POST("/post", func(c *gin.Context) {
+			acceptPost(ipfsShell, key, c)
+		})
+		router.GET("/user/:id", func(c *gin.Context) {
+			userpage(ipfsShell, c)
 		})
 		log.Print(router.Run(":9000").Error())
 		return
@@ -83,7 +88,6 @@ func main() {
 
 func readJson(ipfsShell *ipfs.Shell, cid string, obj interface{}) error {
 	reader, err := ipfsShell.Cat(cid)
-	defer reader.Close()
 	if err != nil {
 		return err
 	}
@@ -164,44 +168,6 @@ func getUser(ipfsShell *ipfs.Shell, userlookup string) (User, error) {
 		return User{}, err
 	}
 	return user, nil
-}
-
-func serveHtml(ipfsShell *ipfs.Shell, key *ipfs.Key, c *gin.Context) {
-	me, err := getUser(ipfsShell, key.Id)
-	if err != nil {
-		log.Fatalf("can't get user %s: %s", key.Id, err)
-	}
-	var followedposts []FetchedPost
-	for _, follow := range me.Follows {
-		f, err := getUser(ipfsShell, follow)
-		if err != nil {
-			log.Fatalf("can't get user %s: %s", follow, err)
-		}
-		posts, err := getPosts(ipfsShell, f, 10)
-		if err != nil {
-			log.Fatalf("can't get posts: %s", err)
-		}
-		for _, p := range posts {
-			contentreader, err := ipfsShell.Cat(p.Content)
-			if err != nil {
-				//just continue?
-				log.Fatalf("can't get content %s: %s", p.Content, err)
-			}
-			defer contentreader.Close()
-			content, err := ioutil.ReadAll(contentreader)
-			if err != nil {
-				fmt.Println(err.Error())
-			}
-			followedposts = append(followedposts, FetchedPost{
-				Post:            p,
-				RenderedContent: string(content),
-				Author:          follow,
-			})
-		}
-	}
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts": followedposts,
-	})
 }
 
 func read(ipfsShell *ipfs.Shell, key *ipfs.Key) {

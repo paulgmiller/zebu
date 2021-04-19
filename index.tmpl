@@ -2,12 +2,20 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>Zepu</title>
+		<title>Zebu</title>
 	</head>
 	<body>
+		<div><a href="/user/{{ .Me }}">Me</a></div>
+		<br />
+		<form action="/post" method="post">
+			<textarea id="post" name="text" rows="12" cols="100"></textarea>
+			<br/>
+			<input type="submit" value="Submit">
+		</form>
+		<br/>
 		{{range .Posts}}
 		<div>{{ .RenderedContent }}</div>
-		<div>{{ .Author }} at {{ .Created }}</div>
+		<div><a href="/user/{{ .Author }}">{{ .Author }}</a> at {{ .Created }}</div>
 		<br />		
         {{else}}
         <div><strong>No Posts</strong></div>
