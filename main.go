@@ -50,8 +50,11 @@ func main() {
 	if *serve {
 		router := gin.Default()
 		router.LoadHTMLFiles("index.tmpl")
-		router.GET("/", serveHtml)
-		router.Run(":8080")
+		router.GET("/", func(c *gin.Context) {
+			serveHtml(ipfsShell, key, c)
+		})
+		log.Print(router.Run(":9000").Error())
+		return
 	}
 
 	if *followee != nobody {
@@ -163,10 +166,41 @@ func getUser(ipfsShell *ipfs.Shell, userlookup string) (User, error) {
 	return user, nil
 }
 
-func serveHtml(c *gin.Context) {
-
+func serveHtml(ipfsShell *ipfs.Shell, key *ipfs.Key, c *gin.Context) {
+	me, err := getUser(ipfsShell, key.Id)
+	if err != nil {
+		log.Fatalf("can't get user %s: %s", key.Id, err)
+	}
+	var followedposts []FetchedPost
+	for _, follow := range me.Follows {
+		f, err := getUser(ipfsShell, follow)
+		if err != nil {
+			log.Fatalf("can't get user %s: %s", follow, err)
+		}
+		posts, err := getPosts(ipfsShell, f, 10)
+		if err != nil {
+			log.Fatalf("can't get posts: %s", err)
+		}
+		for _, p := range posts {
+			contentreader, err := ipfsShell.Cat(p.Content)
+			if err != nil {
+				//just continue?
+				log.Fatalf("can't get content %s: %s", p.Content, err)
+			}
+			defer contentreader.Close()
+			content, err := ioutil.ReadAll(contentreader)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+			followedposts = append(followedposts, FetchedPost{
+				Post:            p,
+				RenderedContent: string(content),
+				Author:          follow,
+			})
+		}
+	}
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"title": "Main website",
+		"Posts": followedposts,
 	})
 }
 

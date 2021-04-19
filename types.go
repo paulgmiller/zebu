@@ -13,4 +13,10 @@ type Post struct {
 	Created  time.Time //can't actually trust this
 }
 
+type FetchedPost struct {
+	Post
+	RenderedContent string
+	Author          string
+}
+
 const nobody = "nobody"

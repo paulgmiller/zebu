@@ -6,7 +6,9 @@
 	</head>
 	<body>
 		{{range .Posts}}
-            <div>{{ .Content }}</div>
+		<div>{{ .RenderedContent }}</div>
+		<div>{{ .Author }} at {{ .Created }}</div>
+		<br />		
         {{else}}
         <div><strong>No Posts</strong></div>
         {{end}}
