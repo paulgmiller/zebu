@@ -48,6 +48,7 @@ func main() {
 
 	if *serve {
 		router := gin.Default()
+		//https://gin-gonic.com/docs/examples/bind-single-binary-with-template/
 		router.LoadHTMLFiles("index.tmpl")
 		router.GET("/", func(c *gin.Context) {
 			userfeed(ipfsShell, key, c)
