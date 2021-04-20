@@ -81,7 +81,12 @@ func userpage(ipfsShell *ipfs.Shell, c *gin.Context) {
 		errorPage(err, c)
 		return
 	}
-	var followedposts []FetchedPost
+
+	userPosts(ipfsShell, user, simpleUser.Id, c)
+}
+
+func userPosts(ipfsShell *ipfs.Shell, user User, author string, c *gin.Context) {
+	var userposts []FetchedPost
 	posts, err := getPosts(ipfsShell, user, 10)
 	if err != nil {
 		errorPage(err, c)
@@ -98,16 +103,20 @@ func userpage(ipfsShell *ipfs.Shell, c *gin.Context) {
 		if err != nil {
 			fmt.Println(err.Error())
 		}
-		followedposts = append(followedposts, FetchedPost{
+		userposts = append(userposts, FetchedPost{
 			Post:            p,
 			RenderedContent: string(content),
-			Author:          simpleUser.Id,
+			Author:          author,
 		})
 	}
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts": followedposts,
-		"Me":    simpleUser.Id, //a little wierd
+		"Posts": userposts,
+		"Me":    author, //a little wierd
 	})
+}
+
+type simplePost struct {
+	Post string `form:"post"`
 }
 
 func acceptPost(ipfsShell *ipfs.Shell, key *ipfs.Key, c *gin.Context) {
@@ -128,13 +137,18 @@ func acceptPost(ipfsShell *ipfs.Shell, key *ipfs.Key, c *gin.Context) {
 		}
 	}
 
-	var simplePost struct {
-		Post string `form:"post"`
-	}
+	var simplePost simplePost
 	c.Bind(&simplePost)
+	if simplePost.Post == "" {
+		log.Printf("form: %v", c.Request.Form)
+		errorPage(fmt.Errorf("Empty post"), c)
+		return
+	}
+
 	cid, err := ipfsShell.Add(strings.NewReader(simplePost.Post))
 	if err != nil {
-		log.Fatalf("error adding content: %s", err)
+		errorPage(err, c)
+		return
 	}
 
 	post := Post{
@@ -154,13 +168,13 @@ func acceptPost(ipfsShell *ipfs.Shell, key *ipfs.Key, c *gin.Context) {
 		return
 	}
 
-	//is this too slow?
-	resp, err := ipfsShell.PublishWithDetails(usercid, key.Name, 0, 0, false)
-	if err != nil {
-		errorPage(err, c)
-		return
-	}
-	log.Printf("Posted user %s to %s\n", usercid, resp.Name)
+	go func() { //too slow?
+		resp, err := ipfsShell.PublishWithDetails(usercid, key.Name, 0, 0, false)
+		if err != nil {
+			log.Printf("Failed to post user %s to %s\n", usercid, err)
+		}
+		log.Printf("Posted user %s to %s\n", usercid, resp.Name)
+	}()
 
-	c.Redirect(http.StatusTemporaryRedirect, "/user/"+key.Id)
+	userPosts(ipfsShell, user, usercid, c)
 }
