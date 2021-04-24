@@ -137,5 +137,5 @@ func acceptPost(backend Backend, c *gin.Context) {
 		return
 	}
 
-	userPosts(backend, me, backend.GetUserId(), c)
+	c.Redirect(http.StatusFound, "/user/"+backend.GetUserId())
 }
