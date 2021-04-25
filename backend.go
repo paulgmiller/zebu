@@ -26,7 +26,7 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 
 	shell := ipfs.NewShell("localhost:5001")
 	if !shell.IsUp() {
-
+		log.Fatal("Ipfs not fond on localhost:5001 please install https://docs.ipfs.io/install/command-line/#official-distributions")
 	}
 	keys, err := shell.KeyList(ctx)
 	if err != nil {
