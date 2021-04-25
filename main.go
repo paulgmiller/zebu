@@ -8,7 +8,7 @@ import (
 	"time"
 
 	//https://pkg.go.dev/github.com/ipfs/go-ipfs-api#Key
-	"github.com/gin-gonic/gin"
+
 	"github.com/ipfs/go-dnslink"
 )
 
@@ -18,32 +18,12 @@ func main() {
 	keyName := flag.String("key", "zebu", "what ipns key are we using")
 	followee := flag.String("follow", nobody, "add somone to your follows")
 	resolve := flag.String("resolve", nobody, "look them up")
-	serve := flag.Bool("serve", false, "serve up web ui")
+	readposts := flag.Bool("read", false, "dummp latest posts from people i follow")
 	//unfollow := flag.String("unfollow", "nobody", "remove somone to your follows")
 	flag.Parse()
 	ctx := context.Background()
 
 	backend := NewIpfsBackend(ctx, *keyName)
-
-	if *serve {
-		router := gin.Default()
-		//https://gin-gonic.com/docs/examples/bind-single-binary-with-template/
-		router.LoadHTMLFiles("index.tmpl")
-		router.GET("/", func(c *gin.Context) {
-			userfeed(backend, c)
-		})
-		router.POST("/post", func(c *gin.Context) {
-			acceptPost(backend, c)
-		})
-		router.POST("/follow", func(c *gin.Context) {
-			acceptFollow(backend, c)
-		})
-		router.GET("/user/:id", func(c *gin.Context) {
-			userpage(backend, c)
-		})
-		log.Print(router.Run(":9000").Error())
-		return
-	}
 
 	if *followee != nobody {
 		follow(backend, *followee)
@@ -62,11 +42,17 @@ func main() {
 		return
 	}
 
-	if *sMsg == "" {
+	if *sMsg != "" {
+		post(backend, *sMsg)
+		return
+	}
+
+	if *readposts {
 		read(backend)
 		return
 	}
-	post(backend, *sMsg)
+
+	serve(backend)
 }
 
 //TODO unfollow

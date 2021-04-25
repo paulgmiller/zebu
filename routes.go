@@ -4,10 +4,34 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+func serve(backend Backend) {
+	router := gin.Default()
+	//https://gin-gonic.com/docs/examples/bind-single-binary-with-template/
+	t, err := loadTemplate()
+	if err != nil {
+		log.Fatalf("couldnt load template, %s", err)
+	}
+	router.SetHTMLTemplate(t)
+	router.GET("/", func(c *gin.Context) {
+		userfeed(backend, c)
+	})
+	router.POST("/post", func(c *gin.Context) {
+		acceptPost(backend, c)
+	})
+	router.POST("/follow", func(c *gin.Context) {
+		acceptFollow(backend, c)
+	})
+	router.GET("/user/:id", func(c *gin.Context) {
+		userpage(backend, c)
+	})
+	log.Print(router.Run(":9000").Error())
+}
 
 func userfeed(backend Backend, c *gin.Context) {
 	me, err := backend.GetUserById(backend.GetUserId())
@@ -41,6 +65,8 @@ func userfeed(backend Backend, c *gin.Context) {
 			})
 		}
 	}
+	//users could lie abotu time but trust for now
+	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
 		"Posts": followedposts,
 		"Me":    backend.GetUserId(),
@@ -68,7 +94,6 @@ func userpage(backend Backend, c *gin.Context) {
 		errorPage(fmt.Errorf("no user supplied"), c)
 		return
 	}
-	log.Printf("getting user %s", simpleUser.Id)
 	user, err := backend.GetUserById(simpleUser.Id)
 	if err != nil {
 		errorPage(err, c)

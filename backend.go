@@ -25,7 +25,9 @@ type IpfsBackend struct {
 func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 
 	shell := ipfs.NewShell("localhost:5001")
+	if !shell.IsUp() {
 
+	}
 	keys, err := shell.KeyList(ctx)
 	if err != nil {
 		log.Fatalf("Can't get keys %s", err)
@@ -85,7 +87,6 @@ func (b *IpfsBackend) SavePost(post Post, user User) error {
 	if err != nil {
 		return err
 	}
-	//log.Printf("%s added %s as post %s\n", msg, cid, postcid)
 	user.LastPost = postcid
 	return b.SaveUser(user)
 }
@@ -139,7 +140,7 @@ func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 		}
 		user.DisplayName = displayname
 	}
-	log.Printf("got user %v", user)
+	log.Printf("got user %s/%s", user.DisplayName, usercid)
 	return user, err
 }
 
@@ -177,5 +178,6 @@ func (b *IpfsBackend) GetPosts(user User, count int) ([]Post, error) {
 		posts = append(posts, post)
 		head = post.Previous
 	}
+	log.Printf("got %d posts from %s", len(posts), user.DisplayName)
 	return posts, nil
 }

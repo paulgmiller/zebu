@@ -1,4 +1,8 @@
-<!DOCTYPE html>
+package main
+
+import "html/template"
+
+var indextmpl string = `<!DOCTYPE html>
 <html>
 	<head>
 		<meta charset="UTF-8">
@@ -27,3 +31,8 @@
         {{end}}
 	</body>
 </html>`
+
+//https://pkg.go.dev/github.com/gin-gonic/gin#readme-build-a-single-binary-with-templates
+func loadTemplate() (*template.Template, error) {
+	return template.New("index.tmpl").Parse(indextmpl)
+}
