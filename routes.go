@@ -139,3 +139,21 @@ func acceptPost(backend Backend, c *gin.Context) {
 
 	c.Redirect(http.StatusFound, "/user/"+backend.GetUserId())
 }
+
+type simpleFollow struct {
+	Followee string `form:"post"`
+}
+
+func acceptFollow(backend Backend, c *gin.Context) {
+	user, err := backend.GetUserById(backend.GetUserId())
+	if err != nil {
+		errorPage(err, c)
+	}
+
+	var simpleFollow simpleFollow
+	c.Bind(&simpleFollow)
+	user.Follows = append(user.Follows, simpleFollow.Followee)
+	backend.SaveUser(user)
+
+	c.Redirect(http.StatusFound, "/user/"+simpleFollow.Followee)
+}

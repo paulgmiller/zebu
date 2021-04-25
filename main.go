@@ -35,6 +35,9 @@ func main() {
 		router.POST("/post", func(c *gin.Context) {
 			acceptPost(backend, c)
 		})
+		router.POST("/follow", func(c *gin.Context) {
+			acceptFollow(backend, c)
+		})
 		router.GET("/user/:id", func(c *gin.Context) {
 			userpage(backend, c)
 		})

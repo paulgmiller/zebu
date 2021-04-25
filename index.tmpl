@@ -12,6 +12,10 @@
 			<br/>
 			<input type="submit" value="Submit">
 		</form>
+		<form action="/post" method="post">
+			<textarea name="post" rows="1" cols="60"></textarea>
+			<input type="submit" value="Follow">
+		</form>
 		<br/>
 		{{range .Posts}}
 		<div>{{ .RenderedContent }}</div>

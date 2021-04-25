@@ -137,7 +137,7 @@ func (b *IpfsBackend) SaveUser(user User) error {
 		return err
 	}
 
-	//shove in go routine?
+	//too slow to block responses
 	go func() {
 		resp, err := b.shell.PublishWithDetails(usercid, b.key.Name, 0, 0, false)
 		if err != nil {
