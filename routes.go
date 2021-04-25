@@ -47,7 +47,8 @@ func userfeed(backend Backend, c *gin.Context) {
 }
 
 func errorPage(err error, c *gin.Context) {
-	c.JSON(400, gin.H{"msg": err})
+	log.Printf("ERROR: %s", err.Error())
+	c.JSON(400, gin.H{"msg": err.Error()})
 }
 
 type simpleuser struct {
@@ -141,7 +142,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 }
 
 type simpleFollow struct {
-	Followee string `form:"post"`
+	Followee string `form:"followee"`
 }
 
 func acceptFollow(backend Backend, c *gin.Context) {
