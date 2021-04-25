@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/ipfs/go-dnslink"
 	ipfs "github.com/ipfs/go-ipfs-api"
@@ -15,8 +16,10 @@ import (
 )
 
 type IpfsBackend struct {
-	shell *ipfs.Shell
-	key   *ipfs.Key
+	shell     *ipfs.Shell
+	key       *ipfs.Key
+	namecache map[string]string
+	cahcelock sync.Mutex
 }
 
 func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
@@ -40,8 +43,9 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 		}
 	}
 	return &IpfsBackend{
-		shell: shell,
-		key:   key,
+		shell:     shell,
+		key:       key,
+		namecache: map[string]string{},
 	}
 }
 
@@ -126,7 +130,14 @@ func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 	}
 	err = b.readJson(usercid, &user)
 	if user.DisplayName == "" {
-		user.DisplayName = namesgenerator.GetRandomName(0)
+		b.cahcelock.Lock()
+		defer b.cahcelock.Unlock()
+		displayname, ok := b.namecache[usercid]
+		if !ok {
+			displayname = namesgenerator.GetRandomName(0)
+			b.namecache[usercid] = displayname
+		}
+		user.DisplayName = displayname
 	}
 	log.Printf("got user %v", user)
 	return user, err
