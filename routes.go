@@ -34,9 +34,10 @@ func userfeed(backend Backend, c *gin.Context) {
 				return
 			}
 			followedposts = append(followedposts, FetchedPost{
-				Post:            p,
-				RenderedContent: string(content),
-				Author:          follow,
+				Post:              p,
+				RenderedContent:   string(content),
+				Author:            follow,
+				AuthorDisplayName: f.DisplayName,
 			})
 		}
 	}
@@ -91,9 +92,10 @@ func userPosts(backend Backend, user User, author string, c *gin.Context) {
 			return
 		}
 		userposts = append(userposts, FetchedPost{
-			Post:            p,
-			RenderedContent: string(content),
-			Author:          author,
+			Post:              p,
+			RenderedContent:   string(content),
+			Author:            author,
+			AuthorDisplayName: user.DisplayName,
 		})
 	}
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{

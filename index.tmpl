@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>Zebu</title>
+		<title>{{ .Me }}</title>
 	</head>
 	<body>
 		<div><a href="/user/{{ .Me }}">Me</a></div>
@@ -20,7 +20,7 @@
 		<br/>
 		{{range .Posts}}
 		<div>{{ .RenderedContent }}</div>
-		<div><a href="/user/{{ .Author }}">{{ .Author }}</a> at {{ .Created }}</div>
+		<div><a href="/user/{{ .Author }}">{{ .AuthorDisplayName }}</a> at {{ .Created }}</div>
 		<br />		
         {{else}}
         <div><strong>No Posts</strong></div>

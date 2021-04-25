@@ -3,8 +3,9 @@ package main
 import "time"
 
 type User struct {
-	LastPost string
-	Follows  []string
+	LastPost    string
+	Follows     []string
+	DisplayName string
 }
 
 type Post struct {
@@ -15,8 +16,9 @@ type Post struct {
 
 type FetchedPost struct {
 	Post
-	RenderedContent string
-	Author          string
+	RenderedContent   string
+	Author            string
+	AuthorDisplayName string
 }
 
 const nobody = "nobody"

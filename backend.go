@@ -11,6 +11,7 @@ import (
 
 	"github.com/ipfs/go-dnslink"
 	ipfs "github.com/ipfs/go-ipfs-api"
+	"github.com/moby/moby/pkg/namesgenerator"
 )
 
 type IpfsBackend struct {
@@ -124,6 +125,10 @@ func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 
 	}
 	err = b.readJson(usercid, &user)
+	if user.DisplayName == "" {
+		user.DisplayName = namesgenerator.GetRandomName(0)
+	}
+	log.Printf("got user %v", user)
 	return user, err
 }
 
@@ -141,7 +146,7 @@ func (b *IpfsBackend) SaveUser(user User) error {
 	go func() {
 		resp, err := b.shell.PublishWithDetails(usercid, b.key.Name, 0, 0, false)
 		if err != nil {
-			log.Printf("Failed ot poste user %s to %s\n", usercid)
+			log.Printf("Failed to post user %s to %s\n", usercid)
 			return
 		}
 		log.Printf("Posted user %s to %s\n", usercid, resp.Name)
