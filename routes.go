@@ -68,8 +68,9 @@ func userfeed(backend Backend, c *gin.Context) {
 	//users could lie abotu time but trust for now
 	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts": followedposts,
-		"Me":    backend.GetUserId(),
+		"Posts":           followedposts,
+		"UserId":          backend.GetUserId(),
+		"UserDisplayName": me.DisplayName,
 	})
 }
 
@@ -124,8 +125,9 @@ func userPosts(backend Backend, user User, author string, c *gin.Context) {
 		})
 	}
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts": userposts,
-		"Me":    author, //a little wierd
+		"Posts":           userposts,
+		"UserId":          author,
+		"UserDisplayName": user.DisplayName,
 	})
 }
 

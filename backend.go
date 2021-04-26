@@ -124,6 +124,7 @@ func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 	usercid, err = b.shell.Resolve(usercid)
 	if err != nil {
 		if strings.Contains(err.Error(), "could not resolve name") {
+			user.DisplayName = namesgenerator.GetRandomName(0)
 			return user, nil //bad idea?
 		}
 		return user, fmt.Errorf("can't resolve key: %w", err)

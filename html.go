@@ -6,10 +6,10 @@ var indextmpl string = `<!DOCTYPE html>
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>{{ .Me }}</title>
+		<title>{{ .UserDisplayName }}</title>
 	</head>
 	<body>
-		<div><a href="/user/{{ .Me }}">Me</a></div>
+		<div><a href="/user/{{ .UserId }}">{{ .UserDisplayName }}</a></div>
 		<br />
 		<form action="/post" method="post">
 			<textarea name="post" rows="12" cols="100"></textarea>
