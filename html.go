@@ -9,7 +9,7 @@ var indextmpl string = `<!DOCTYPE html>
 		<title>{{ .UserDisplayName }}</title>
 	</head>
 	<body>
-		<div><a href="/user/{{ .UserId }}">{{ .UserDisplayName }}</a></div>
+		<div><a href="/user/{{ .UserId }}">{{ .UserDisplayName }}</a>(ask friends to follow {{ .UserId }})</div>
 		<br />
 		<form action="/post" method="post">
 			<textarea name="post" rows="12" cols="100"></textarea>
