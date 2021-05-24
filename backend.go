@@ -115,6 +115,9 @@ func (b *IpfsBackend) Add(content string) (string, error) {
 const ipnsprefix = "/ipns/"
 
 func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
+
+	//todo resolve ens address https://github.com/wealdtech/go-ens and infura
+
 	//does this do anything?
 	link, err := dnslink.Resolve(usercid)
 	if err != nil && strings.HasPrefix(link, ipnsprefix) {

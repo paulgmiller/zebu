@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"log"
 	"time"
-
 	//https://pkg.go.dev/github.com/ipfs/go-ipfs-api#Key
-
-	"github.com/ipfs/go-dnslink"
 )
 
 func main() {
@@ -31,14 +28,7 @@ func main() {
 	}
 
 	if *resolve != nobody {
-		//usercid, err := ipfsShell.Resolve(*resolve)
-		link, err := dnslink.Resolve(*resolve)
-		if err != nil {
-			fmt.Println(err.Error())
-		} else {
-			fmt.Println(link)
-		}
-
+		ResolveEns(*resolve)
 		return
 	}
 
