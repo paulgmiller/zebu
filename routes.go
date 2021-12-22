@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/skip2/go-qrcode"
 )
 
 func serve(backend Backend) {
@@ -30,7 +31,21 @@ func serve(backend Backend) {
 	router.GET("/user/:id", func(c *gin.Context) {
 		userpage(backend, c)
 	})
+	router.GET("/key", func(c *gin.Context) {
+		qrCode(backend, c)
+	})
 	log.Print(router.Run(":9000").Error())
+}
+
+func qrCode(backend Backend, c *gin.Context) {
+	var png []byte
+  	png, err := qrcode.Encode("Wintana Miller", qrcode.Low, 256)
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+	contentType := "image/png"
+	c.Data(http.StatusOK,  contentType, png)
 }
 
 func userfeed(backend Backend, c *gin.Context) {
