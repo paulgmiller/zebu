@@ -45,7 +45,7 @@ func qrCode(backend Backend, c *gin.Context) {
 		errorPage(err, c)
 		return
 	}
-	log.Printf("dumping key: %s", hex.EncodeToString(key))
+	fmt.Printf("dumping key: %s", hex.EncodeToString(key))
 	var png []byte
 	png, err = qrcode.Encode(hex.EncodeToString(key), qrcode.Low, 256)
 	if err != nil {
