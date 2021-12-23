@@ -14,6 +14,7 @@ import (
 	ipfs "github.com/ipfs/go-ipfs-api"
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/mitchellh/go-homedir"
 	"github.com/moby/moby/pkg/namesgenerator"
 )
 
@@ -47,22 +48,20 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 			log.Fatalf("Can't create keys %s", keyName)
 		}
 	}
-	/*keystoredir, _ := homedir.Expand("~/.ipfs/keystore")
+	keystoredir, _ := homedir.Expand("~/.ipfs/keystore")
 	ks, err := keystore.NewFSKeystore(keystoredir)
 	if err != nil {
 		log.Fatalf("Can't create keystore %s", keyName)
 	}
 	if found, _ := ks.Has(key.Name); !found {
 		log.Fatal("Coudn't find key in keystore")
-	}*/
-
-	log.Fatalf("what the hell")
+	}
 
 	return &IpfsBackend{
 		shell:     shell,
 		key:       key,
 		namecache: map[string]string{},
-		//keystore:  ks,
+		keystore:  ks,
 	}
 
 }
