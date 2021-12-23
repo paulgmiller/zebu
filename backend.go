@@ -12,6 +12,9 @@ import (
 
 	"github.com/ipfs/go-dnslink"
 	ipfs "github.com/ipfs/go-ipfs-api"
+	keystore "github.com/ipfs/go-ipfs-keystore"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/mitchellh/go-homedir"
 	"github.com/moby/moby/pkg/namesgenerator"
 )
 
@@ -20,6 +23,7 @@ type IpfsBackend struct {
 	key       *ipfs.Key
 	namecache map[string]string
 	cahcelock sync.Mutex
+	keystore  keystore.Keystore
 }
 
 func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
@@ -44,11 +48,22 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 			log.Fatalf("Can't create keys %s", keyName)
 		}
 	}
+	keystoredir, _ := homedir.Expand("~/.ipfs/keystore")
+	ks, err := keystore.NewFSKeystore(keystoredir)
+	if err != nil {
+		log.Fatalf("Can't create keystore %s", keyName)
+	}
+	if found, _ := ks.Has(key.Name); !found {
+		log.Fatal("Coudn't find key in keystore")
+	}
+
 	return &IpfsBackend{
 		shell:     shell,
 		key:       key,
 		namecache: map[string]string{},
+		keystore:  ks,
 	}
+
 }
 
 func (b *IpfsBackend) readJson(cid string, obj interface{}) error {
@@ -80,6 +95,8 @@ type Backend interface {
 	//too low level?
 	Cat(cid string) (string, error)
 	Add(content string) (string, error)
+
+	ExportKey() ([]byte, error)
 }
 
 func (b *IpfsBackend) SavePost(post Post, user User) error {
@@ -152,6 +169,25 @@ func (b *IpfsBackend) GetUserId() string {
 	return b.key.Id
 }
 
+//seperater interface?
+func (b *IpfsBackend) ExportKey() ([]byte, error) {
+	privatekey, err := b.keystore.Get(b.key.Name)
+	if err != nil {
+		return nil, err
+	}
+	return crypto.MarshalPrivateKey(privatekey)
+}
+
+func (b *IpfsBackend) ImportKey(kpbytes []byte) error {
+
+	privatekey, err := crypto.UnmarshalPrivateKey(kpbytes)
+	if err != nil {
+		return err
+	}
+	//overwrites exiting
+	return b.keystore.Put(b.key.Name, privatekey)
+}
+
 func (b *IpfsBackend) SaveUser(user User) error {
 	usercid, err := b.writeJson(&user)
 	if err != nil {
@@ -162,7 +198,7 @@ func (b *IpfsBackend) SaveUser(user User) error {
 	go func() {
 		resp, err := b.shell.PublishWithDetails(usercid, b.key.Name, 0, 0, false)
 		if err != nil {
-			log.Printf("Failed to post user %s to %s\n", usercid)
+			log.Printf("Failed to post user %s to %s\n", usercid, b.key.Name)
 			return
 		}
 		log.Printf("Posted user %s to %s\n", usercid, resp.Name)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -37,15 +38,22 @@ func serve(backend Backend) {
 	log.Print(router.Run(":9000").Error())
 }
 
+//look may a security hole
 func qrCode(backend Backend, c *gin.Context) {
+	key, err := backend.ExportKey()
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+	log.Printf("dumping key: %s", hex.EncodeToString(key))
 	var png []byte
-  	png, err := qrcode.Encode("Wintana Miller", qrcode.Low, 256)
+	png, err = qrcode.Encode(hex.EncodeToString(key), qrcode.Low, 256)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
 	contentType := "image/png"
-	c.Data(http.StatusOK,  contentType, png)
+	c.Data(http.StatusOK, contentType, png)
 }
 
 func userfeed(backend Backend, c *gin.Context) {
