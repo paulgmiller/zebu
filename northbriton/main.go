@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -32,6 +32,8 @@ func List(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var domainregex = regexp.MustCompile("^[A-Za-z0-9](?:[A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?$")
+
 func Reserve(w http.ResponseWriter, r *http.Request) {
 	fmt.Println()
 	if r.Method != http.MethodPut {
@@ -45,8 +47,7 @@ func Reserve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := url.ParseRequestURI(fmt.Sprintf("http://%s.northbriton.net", name))
-	if err != nil {
+	if !domainregex.MatchString(name) {
 		http.Error(w, "invalid host name "+name, http.StatusBadRequest)
 		return
 	}
