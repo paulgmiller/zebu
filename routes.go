@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"github.com/skip2/go-qrcode"
 )
 
@@ -194,7 +195,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 }
 
 type simpleFollow struct {
-	Followee string `form:"followee"`
+	Followee string `form:"followee"` //ipns?
 }
 
 func acceptFollow(backend Backend, c *gin.Context) {
@@ -205,6 +206,11 @@ func acceptFollow(backend Backend, c *gin.Context) {
 
 	var simpleFollow simpleFollow
 	c.Bind(&simpleFollow)
+	_, err = backend.GetUserById(simpleFollow.Followee)
+	if err != nil {
+		errorPage(errors.Wrap(err, "couldn't resolve followee"), c)
+	}
+
 	user.Follows = append(user.Follows, simpleFollow.Followee)
 	backend.SaveUser(user)
 
