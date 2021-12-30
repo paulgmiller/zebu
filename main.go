@@ -20,15 +20,19 @@ func main() {
 	flag.Parse()
 	ctx := context.Background()
 
+	if *resolve != nobody {
+		hash, err := ResolveEthLink(*resolve)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(hash)
+		return
+	}
+
 	backend := NewIpfsBackend(ctx, *keyName)
 
 	if *followee != nobody {
 		follow(backend, *followee)
-		return
-	}
-
-	if *resolve != nobody {
-		ResolveEns(*resolve)
 		return
 	}
 
