@@ -40,6 +40,7 @@ func ResolveEthLink(ensdomain string) (string, error) {
 		return "", err
 	}
 	req.Header.Add("content-type", "application/dns-json")
+	req.Header.Set("User-Agent", "zebu")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
