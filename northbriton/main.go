@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -116,12 +117,13 @@ func Reserve(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, fmt.Errorf("can't get zone %w", err).Error(), http.StatusInternalServerError)
 		return
-
 	}
+	bodybytes, _ := ioutil.ReadAll(r.Body)
+
 	resp, err := api.CreateDNSRecord(r.Context(), nbid, cloudflare.DNSRecord{
 		Name:    fullname,
 		Type:    "TXT",
-		Content: "dnslink=/ipfs/bafybeieenxnjdjm7vbr5zdwemaun4sw4iy7h4imlvvl433q6gzjg6awdpq",
+		Content: "dnslink=/ipns/" + string(bodybytes),
 	})
 	if err != nil || !resp.Success {
 		http.Error(w, "Error reserving "+name, http.StatusInternalServerError)
