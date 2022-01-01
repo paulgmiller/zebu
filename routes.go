@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +18,7 @@ import (
 func serve(backend Backend) {
 	router := gin.Default()
 	//https://gin-gonic.com/docs/examples/bind-single-binary-with-template/
-	t, err := loadTemplate()
+	t, err := loadTemplates()
 	if err != nil {
 		log.Fatalf("couldnt load template, %s", err)
 	}
@@ -29,6 +31,9 @@ func serve(backend Backend) {
 	})
 	router.POST("/follow", func(c *gin.Context) {
 		acceptFollow(backend, c)
+	})
+	router.POST("/register", func(c *gin.Context) {
+		registerPublicName(backend, c)
 	})
 	router.GET("/user/:id", func(c *gin.Context) {
 		userpage(backend, c)
@@ -82,19 +87,19 @@ func userfeed(backend Backend, c *gin.Context) {
 				return
 			}
 			followedposts = append(followedposts, FetchedPost{
-				Post:              p,
-				RenderedContent:   string(content),
-				Author:            follow,
-				AuthorDisplayName: f.DisplayName,
+				Post:             p,
+				RenderedContent:  string(content),
+				Author:           follow,
+				AuthorPublicName: f.PublicName,
 			})
 		}
 	}
 	//users could lie abotu time but trust for now
 	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts":           followedposts,
-		"UserId":          backend.GetUserId(),
-		"UserDisplayName": me.DisplayName,
+		"Posts":          followedposts,
+		"UserId":         backend.GetUserId(),
+		"UserPublicName": me.PublicName,
 	})
 }
 
@@ -142,16 +147,16 @@ func userPosts(backend Backend, user User, author string, c *gin.Context) {
 			return
 		}
 		userposts = append(userposts, FetchedPost{
-			Post:              p,
-			RenderedContent:   string(content),
-			Author:            author,
-			AuthorDisplayName: user.DisplayName,
+			Post:             p,
+			RenderedContent:  string(content),
+			Author:           author,
+			AuthorPublicName: user.PublicName,
 		})
 	}
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts":           userposts,
-		"UserId":          author,
-		"UserDisplayName": user.DisplayName,
+		"Posts":          userposts,
+		"UserId":         author,
+		"UserPublicName": user.PublicName,
 	})
 }
 
@@ -215,4 +220,32 @@ func acceptFollow(backend Backend, c *gin.Context) {
 	backend.SaveUser(user)
 
 	c.Redirect(http.StatusFound, "/user/"+simpleFollow.Followee)
+}
+
+type simpleRegister struct {
+	PublicName string `form:"publicname"`
+}
+
+func registerPublicName(backend Backend, c *gin.Context) {
+	var simpleRegister simpleRegister
+	c.Bind(&simpleRegister)
+	url := "http://registrar.northbriton.net:8000/reserve/" + simpleRegister.PublicName
+
+	resp, err := http.Post(url, "text/plain", strings.NewReader(backend.GetUserId()))
+	if err != nil {
+		errorPage(err, c)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := ioutil.ReadAll(resp.Body)
+		errorPage(fmt.Errorf("Got %d : %s", resp.StatusCode, string(body)), c)
+	}
+
+	user, err := backend.GetUserById(backend.GetUserId())
+	if err != nil {
+		errorPage(err, c)
+	}
+	user.PublicName = simpleRegister.PublicName + ".northbriton.net"
+	backend.SaveUser(user)
+
+	c.Redirect(http.StatusFound, "/")
 }

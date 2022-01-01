@@ -144,24 +144,24 @@ func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 	usercid, err = b.shell.Resolve(usercid)
 	if err != nil {
 		if strings.Contains(err.Error(), "could not resolve name") {
-			user.DisplayName = namesgenerator.GetRandomName(0)
+			user.PublicName = namesgenerator.GetRandomName(0)
 			return user, nil //bad idea?
 		}
 		return user, fmt.Errorf("can't resolve key: %w", err)
 
 	}
 	err = b.readJson(usercid, &user)
-	if user.DisplayName == "" {
+	if user.PublicName == "" {
 		b.cahcelock.Lock()
 		defer b.cahcelock.Unlock()
-		displayname, ok := b.namecache[usercid]
+		PublicName, ok := b.namecache[usercid]
 		if !ok {
-			displayname = namesgenerator.GetRandomName(0)
-			b.namecache[usercid] = displayname
+			PublicName = namesgenerator.GetRandomName(0)
+			b.namecache[usercid] = PublicName
 		}
-		user.DisplayName = displayname
+		user.PublicName = PublicName
 	}
-	log.Printf("got user %s/%s", user.DisplayName, usercid)
+	log.Printf("got user %s/%s", user.PublicName, usercid)
 	return user, err
 }
 
@@ -218,6 +218,6 @@ func (b *IpfsBackend) GetPosts(user User, count int) ([]Post, error) {
 		posts = append(posts, post)
 		head = post.Previous
 	}
-	log.Printf("got %d posts from %s", len(posts), user.DisplayName)
+	log.Printf("got %d posts from %s", len(posts), user.PublicName)
 	return posts, nil
 }

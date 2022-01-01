@@ -6,6 +6,7 @@ type User struct {
 	LastPost    string
 	Follows     []string
 	DisplayName string
+	PublicName  string //ens or dns name
 }
 
 type Post struct {
@@ -16,9 +17,9 @@ type Post struct {
 
 type FetchedPost struct {
 	Post
-	RenderedContent   string
-	Author            string
-	AuthorDisplayName string
+	RenderedContent  string
+	Author           string
+	AuthorPublicName string
 }
 
 const nobody = "nobody"
