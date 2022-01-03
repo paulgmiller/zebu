@@ -35,6 +35,10 @@ func serve(backend Backend) {
 	router.POST("/register", func(c *gin.Context) {
 		registerPublicName(backend, c)
 	})
+	router.GET("/register", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "register.tmpl", gin.H{})
+	})
+
 	router.GET("/user/:id", func(c *gin.Context) {
 		userpage(backend, c)
 	})
@@ -68,6 +72,12 @@ func userfeed(backend Backend, c *gin.Context) {
 		errorPage(err, c)
 		return
 	}
+
+	if me.PublicName == "" {
+		c.HTML(http.StatusOK, "register.tmpl", gin.H{})
+		return
+	}
+
 	var followedposts []FetchedPost
 	for _, follow := range me.Follows {
 		f, err := backend.GetUserById(follow)
@@ -127,6 +137,11 @@ func userpage(backend Backend, c *gin.Context) {
 	user, err := backend.GetUserById(simpleUser.Id)
 	if err != nil {
 		errorPage(err, c)
+		return
+	}
+
+	if c.Query("raw") == "true" {
+		c.IndentedJSON(http.StatusOK, user)
 		return
 	}
 
@@ -229,22 +244,26 @@ type simpleRegister struct {
 func registerPublicName(backend Backend, c *gin.Context) {
 	var simpleRegister simpleRegister
 	c.Bind(&simpleRegister)
-	url := "http://registrar.northbriton.net:8000/reserve/" + simpleRegister.PublicName
-
-	resp, err := http.Post(url, "text/plain", strings.NewReader(backend.GetUserId()))
+	publicname := strings.TrimSpace(simpleRegister.PublicName)
+	url := "http://registrar.northbriton.net:8000/reserve/" + publicname
+	req, err := http.NewRequest(http.MethodPut, url, strings.NewReader(backend.GetUserId()))
+	if err != nil {
+		errorPage(err, c)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		errorPage(err, c)
 	}
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := ioutil.ReadAll(resp.Body)
-		errorPage(fmt.Errorf("Got %d : %s", resp.StatusCode, string(body)), c)
+		errorPage(fmt.Errorf("got %d : %s", resp.StatusCode, string(body)), c)
 	}
 
 	user, err := backend.GetUserById(backend.GetUserId())
 	if err != nil {
 		errorPage(err, c)
 	}
-	user.PublicName = simpleRegister.PublicName + ".northbriton.net"
+	user.PublicName = publicname + ".northbriton.net"
 	backend.SaveUser(user)
 
 	c.Redirect(http.StatusFound, "/")

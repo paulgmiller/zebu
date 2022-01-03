@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"sync"
 
@@ -15,7 +16,6 @@ import (
 	keystore "github.com/ipfs/go-ipfs-keystore"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/mitchellh/go-homedir"
-	"github.com/moby/moby/pkg/namesgenerator"
 )
 
 type IpfsBackend struct {
@@ -49,6 +49,9 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 		}
 	}
 	keystoredir, _ := homedir.Expand("~/.ipfs/keystore")
+	if ipfspath, found := os.LookupEnv("IPFS_PATH"); found {
+		keystoredir = ipfspath + "/keystore"
+	}
 	ks, err := keystore.NewFSKeystore(keystoredir)
 	if err != nil {
 		log.Fatalf("Can't create keystore %s", keyName)
@@ -144,23 +147,12 @@ func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 	usercid, err = b.shell.Resolve(usercid)
 	if err != nil {
 		if strings.Contains(err.Error(), "could not resolve name") {
-			user.PublicName = namesgenerator.GetRandomName(0)
 			return user, nil //bad idea?
 		}
 		return user, fmt.Errorf("can't resolve key: %w", err)
 
 	}
 	err = b.readJson(usercid, &user)
-	if user.PublicName == "" {
-		b.cahcelock.Lock()
-		defer b.cahcelock.Unlock()
-		PublicName, ok := b.namecache[usercid]
-		if !ok {
-			PublicName = namesgenerator.GetRandomName(0)
-			b.namecache[usercid] = PublicName
-		}
-		user.PublicName = PublicName
-	}
 	log.Printf("got user %s/%s", user.PublicName, usercid)
 	return user, err
 }
