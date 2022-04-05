@@ -102,6 +102,11 @@ func Reserve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if len(names) > 100 {
+		http.Error(w, "no vacancies", http.StatusForbidden)
+		return
+	}
+
 	fullname := "_dnslink." + name + "." + nb
 	if content, found := names[fullname]; found {
 		http.Error(w, fmt.Sprintf("Already created %s as %s", name, content), http.StatusConflict)
