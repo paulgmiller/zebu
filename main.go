@@ -99,7 +99,7 @@ func post(backend Backend, msg string) {
 		log.Fatalf(err.Error())
 	}
 
-	cid, err := backend.Add(msg)
+	cid, err := AddString(backend, msg)
 	if err != nil {
 		log.Fatalf("error adding content: %s", err)
 	}

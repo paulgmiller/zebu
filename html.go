@@ -14,6 +14,8 @@ var indextmpl string = `<!DOCTYPE html>
 		<form action="/post" method="post">
 			<textarea name="post" rows="12" cols="100"></textarea>
 			<br/>
+			<input type="file" name="images" accept="image/*" multiple="true">
+			<br/>
 			<input type="submit" value="Submit">
 		</form>
 		<form action="/follow" method="post">
@@ -24,6 +26,9 @@ var indextmpl string = `<!DOCTYPE html>
 		<br/>
 		{{range .Posts}}
 		<div>{{ .RenderedContent }}</div>
+		{{range .Images}}
+		<img src="/img/{{.}}"/>
+		{{end}}
 		<div><a href="/user/{{ .AuthorPublicName }}">{{ .AuthorPublicName }}</a> at {{ .Created }}</div>
 		<br />		
         {{else}}

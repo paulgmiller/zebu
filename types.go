@@ -12,6 +12,7 @@ type User struct {
 type Post struct {
 	Previous string
 	Content  string
+	Images   []string
 	Created  time.Time //can't actually trust this
 }
 

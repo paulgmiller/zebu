@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -52,9 +53,14 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 	if ipfspath, found := os.LookupEnv("IPFS_PATH"); found {
 		keystoredir = ipfspath + "/keystore"
 	}
+	if _, err := os.Stat(keystoredir); os.IsNotExist(err) {
+		//sillt snap
+		keystoredir, _ = homedir.Expand("~/snap/ipfs/common/keystore")
+	}
+
 	ks, err := keystore.NewFSKeystore(keystoredir)
 	if err != nil {
-		log.Fatalf("Can't create keystore %s", keyName)
+		log.Fatalf("Can't create keystore %s", keystoredir)
 	}
 	if found, _ := ks.Has(key.Name); !found {
 		log.Fatal("Coudn't find key in keystore")
@@ -96,8 +102,9 @@ type Backend interface {
 	GetPosts(user User, count int) ([]Post, error)
 	SavePost(post Post, user User) error
 	//too low level?
-	Cat(cid string) (string, error)
-	Add(content string) (string, error)
+	Cat(cid string) (string, error) //remove with helper method.
+	CatReader(cid string) (io.ReadCloser, error)
+	Add(r io.Reader) (string, error)
 
 	ExportKey() ([]byte, error)
 }
@@ -109,6 +116,10 @@ func (b *IpfsBackend) SavePost(post Post, user User) error {
 	}
 	user.LastPost = postcid
 	return b.SaveUser(user)
+}
+
+func (b *IpfsBackend) CatReader(cid string) (io.ReadCloser, error) {
+	return b.shell.Cat(cid)
 }
 
 func (b *IpfsBackend) Cat(cid string) (string, error) {
@@ -124,12 +135,12 @@ func (b *IpfsBackend) Cat(cid string) (string, error) {
 	return string(bytes), nil
 }
 
-func (b *IpfsBackend) Add(content string) (string, error) {
-	cid, err := b.shell.Add(strings.NewReader(content))
-	if err != nil {
-		return "", err
-	}
-	return cid, nil
+func (b *IpfsBackend) Add(r io.Reader) (string, error) {
+	return b.shell.Add(r)
+}
+
+func AddString(backend Backend, content string) (string, error) {
+	return backend.Add(strings.NewReader(content))
 }
 
 const ipnsprefix = "/ipns/"

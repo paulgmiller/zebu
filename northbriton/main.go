@@ -28,6 +28,7 @@ func main() {
 	// Set routing rules
 	http.HandleFunc("/reserve/", withLogging(Reserve))
 	http.HandleFunc("/list", withLogging(List))
+	http.HandleFunc("/health", health)
 
 	//Use the default DefaultServeMux.
 	err := http.ListenAndServe(":8000", nil)
@@ -55,6 +56,10 @@ func listRecords(ctx context.Context) (map[string]string, error) {
 		result[record.Name] = record.Content
 	}
 	return result, nil
+}
+
+func health(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("ok"))
 }
 
 func List(w http.ResponseWriter, r *http.Request) {

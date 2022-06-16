@@ -45,6 +45,16 @@ func serve(backend Backend) {
 	router.GET("/key", func(c *gin.Context) {
 		qrCode(backend, c)
 	})
+	router.GET("/img/:cidr", func(c *gin.Context) {
+		cidr := c.Param("cidr")
+		imgreader, err := backend.CatReader(cidr)
+		if err != nil {
+			errorPage(err, c)
+			return
+		}
+		var contentlength int64 = 0 //wrong
+		c.DataFromReader(http.StatusOK, contentlength, "image/*", imgreader, map[string]string{})
+	})
 	log.Print(router.Run(":9000").Error())
 }
 
@@ -186,6 +196,27 @@ func acceptPost(backend Backend, c *gin.Context) {
 		return
 	}
 
+	form, err := c.MultipartForm()
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+	images := form.File["images[]"]
+	imagecidrs := []string{}
+	for _, img := range images {
+		f, err := img.Open()
+		if err != nil {
+			errorPage(err, c)
+			return
+		}
+		cidr, err := backend.Add(f)
+		if err != nil {
+			errorPage(err, c)
+			return
+		}
+		imagecidrs = append(imagecidrs, cidr)
+	}
+
 	var simplePost simplePost
 	c.Bind(&simplePost)
 	if simplePost.Post == "" {
@@ -194,7 +225,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 		return
 	}
 
-	cid, err := backend.Add(simplePost.Post)
+	cid, err := AddString(backend, simplePost.Post)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -204,6 +235,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 		Previous: me.LastPost,
 		Content:  cid,
 		Created:  time.Now().UTC(),
+		Images:   imagecidrs,
 	}
 	err = backend.SavePost(post, me)
 	if err != nil {
@@ -245,7 +277,7 @@ func registerPublicName(backend Backend, c *gin.Context) {
 	var simpleRegister simpleRegister
 	c.Bind(&simpleRegister)
 	publicname := strings.TrimSpace(simpleRegister.PublicName)
-	url := "http://registrar.northbriton.net:8000/reserve/" + publicname
+	url := "https://registrar.northbriton.net/reserve/" + publicname
 	req, err := http.NewRequest(http.MethodPut, url, strings.NewReader(backend.GetUserId()))
 	if err != nil {
 		errorPage(err, c)
