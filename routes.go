@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -52,8 +53,11 @@ func serve(backend Backend) {
 			errorPage(err, c)
 			return
 		}
-		var contentlength int64 = 0 //wrong
-		c.DataFromReader(http.StatusOK, contentlength, "image/*", imgreader, map[string]string{})
+		//can't get lenth without buf.
+		buf := &bytes.Buffer{}
+		buf.ReadFrom(imgreader)
+
+		c.DataFromReader(http.StatusOK, int64(buf.Len()), "image/*", buf, map[string]string{})
 	})
 	log.Print(router.Run(":9000").Error())
 }
@@ -201,9 +205,10 @@ func acceptPost(backend Backend, c *gin.Context) {
 		errorPage(err, c)
 		return
 	}
-	images := form.File["images[]"]
+	images := form.File["images"]
 	imagecidrs := []string{}
 	for _, img := range images {
+		log.Printf("found %s", img.Filename)
 		f, err := img.Open()
 		if err != nil {
 			errorPage(err, c)
@@ -214,6 +219,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 			errorPage(err, c)
 			return
 		}
+		log.Printf("saved %s as %s", img.Filename, cidr)
 		imagecidrs = append(imagecidrs, cidr)
 	}
 

@@ -11,10 +11,10 @@ var indextmpl string = `<!DOCTYPE html>
 	<body>
 		<div><a href="/user/{{ .UserPublicName }}">{{ .UserPublicName }}</a>(ask friends to follow {{ .UserPublicName }})</div>
 		<br />
-		<form action="/post" method="post">
+		<form action="/post" method="post" enctype="multipart/form-data">
 			<textarea name="post" rows="12" cols="100"></textarea>
 			<br/>
-			<input type="file" name="images" accept="image/*" multiple="true">
+			<input type="file" name="images" accept="image/*" multiple>
 			<br/>
 			<input type="submit" value="Submit">
 		</form>
