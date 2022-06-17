@@ -27,7 +27,7 @@ var indextmpl string = `<!DOCTYPE html>
 		{{range .Posts}}
 		<div>{{ .RenderedContent }}</div>
 		{{range .Images}}
-		<img src="/img/{{.}}"/>
+		<img src="/img/{{.}}" width="100"/>
 		{{end}}
 		<div><a href="/user/{{ .AuthorPublicName }}">{{ .AuthorPublicName }}</a> at {{ .Created }}</div>
 		<br />		
