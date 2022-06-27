@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>{{ .UserPublicName }}</title>
+	</head>
+	<body>
+		<div><a href="/user/{{ .UserPublicName }}">{{ .UserPublicName }}</a>(ask friends to follow {{ .UserPublicName }})</div>
+		<br />
+		<form action="/post" method="post" enctype="multipart/form-data">
+			<textarea name="post" rows="12" cols="100"></textarea>
+			<br/>
+			<input type="file" name="images" accept="image/*" multiple>
+			<br/>
+			<input type="submit" value="Submit">
+		</form>
+		<form action="/follow" method="post">
+			<textarea name="followee" rows="2" cols="64"></textarea>
+			<br/>
+			<input type="submit" value="Follow">
+		</form>
+		<br/>
+		{{range .Posts}}
+		<div>{{ .RenderedContent }}</div>
+		{{range .Images}}
+		<img src="/img/{{.}}" width="100"/>
+		{{end}}
+		<div><a href="/user/{{ .AuthorPublicName }}">{{ .AuthorPublicName }}</a> at {{ .Created }}</div>
+		<br />		
+        {{else}}
+        <div><strong>No Posts</strong></div>
+        {{end}}
+	</body>
+</html>
