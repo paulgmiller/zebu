@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/ipfs/go-dnslink"
 	ipfs "github.com/ipfs/go-ipfs-api"
@@ -19,11 +18,32 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
+type Backend interface {
+	ContentBackend
+	KeyBackend
+}
+
+type KeyBackend interface {
+	ExportKey() ([]byte, error)
+	EnsureKey(context.Context, string) (*ipfs.Key, error)
+}
+
+type ContentBackend interface {
+	GetUserById(usercid string) (User, error)
+	GetUserId() string
+	SaveUser(user User) error
+	GetPosts(user User, count int) ([]Post, error)
+	SavePost(post Post, user User) error
+	//too low level?
+	Cat(cid string) (string, error) //remove with helper method.
+	CatReader(cid string) (io.ReadCloser, error)
+	Add(r io.Reader) (string, error)
+}
+
 type IpfsBackend struct {
 	shell     *ipfs.Shell
 	key       *ipfs.Key
 	namecache map[string]string
-	cahcelock sync.Mutex
 	keystore  keystore.Keystore
 }
 
@@ -33,28 +53,13 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 	if !shell.IsUp() {
 		log.Fatal("Ipfs not fond on localhost:5001 please install https://docs.ipfs.io/install/command-line/#official-distributions")
 	}
-	keys, err := shell.KeyList(ctx)
-	if err != nil {
-		log.Fatalf("Can't get keys %s", err)
-	}
-	var key *ipfs.Key
-	for _, k := range keys {
-		if k.Name == keyName {
-			key = k
-		}
-	}
-	if key == nil {
-		key, err = shell.KeyGen(ctx, keyName)
-		if err != nil {
-			log.Fatalf("Can't create keys %s", keyName)
-		}
-	}
+
 	keystoredir, _ := homedir.Expand("~/.ipfs/keystore")
 	if ipfspath, found := os.LookupEnv("IPFS_PATH"); found {
 		keystoredir = ipfspath + "/keystore"
 	}
 	if _, err := os.Stat(keystoredir); os.IsNotExist(err) {
-		//sillt snap
+		//stupid snap
 		keystoredir, _ = homedir.Expand("~/snap/ipfs/common/keystore")
 	}
 
@@ -62,16 +67,22 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 	if err != nil {
 		log.Fatalf("Can't create keystore %s", keystoredir)
 	}
-	if found, _ := ks.Has(key.Name); !found {
-		log.Fatal("Coudn't find key in keystore")
-	}
 
-	return &IpfsBackend{
+	backend := &IpfsBackend{
 		shell:     shell,
-		key:       key,
 		namecache: map[string]string{},
 		keystore:  ks,
 	}
+
+	if backend.key, err = backend.EnsureKey(ctx, keyName); err != nil {
+		log.Fatal(err.Error())
+	}
+
+	if found, _ := ks.Has(keyName); !found {
+		log.Fatal("Coudn't find key in keystore")
+	}
+
+	return backend
 
 }
 
@@ -93,20 +104,6 @@ func (b *IpfsBackend) writeJson(obj interface{}) (string, error) {
 		return "", err
 	}
 	return b.shell.Add(&buf)
-}
-
-type Backend interface {
-	GetUserById(usercid string) (User, error)
-	GetUserId() string
-	SaveUser(user User) error
-	GetPosts(user User, count int) ([]Post, error)
-	SavePost(post Post, user User) error
-	//too low level?
-	Cat(cid string) (string, error) //remove with helper method.
-	CatReader(cid string) (io.ReadCloser, error)
-	Add(r io.Reader) (string, error)
-
-	ExportKey() ([]byte, error)
 }
 
 func (b *IpfsBackend) SavePost(post Post, user User) error {
@@ -158,7 +155,7 @@ func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 	usercid, err = b.shell.Resolve(usercid)
 	if err != nil {
 		if strings.Contains(err.Error(), "could not resolve name") {
-			return user, nil //bad idea?
+			return user, nil //bad idea. too late!
 		}
 		return user, fmt.Errorf("can't resolve key: %w", err)
 
@@ -172,7 +169,26 @@ func (b *IpfsBackend) GetUserId() string {
 	return b.key.Id
 }
 
-//seperater interface?
+func (b *IpfsBackend) EnsureKey(ctx context.Context, keyName string) (*ipfs.Key, error) {
+	keys, err := b.shell.KeyList(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("Can't get keys %s", err)
+	}
+	var key *ipfs.Key
+	for _, k := range keys {
+		if k.Name == keyName {
+			key = k
+		}
+	}
+	if key == nil {
+		key, err = b.shell.KeyGen(ctx, keyName)
+		if err != nil {
+			return nil, fmt.Errorf("Can't create keys %s", keyName)
+		}
+	}
+	return key, nil
+}
+
 func (b *IpfsBackend) ExportKey() ([]byte, error) {
 	privatekey, err := b.keystore.Get(b.key.Name)
 	if err != nil {

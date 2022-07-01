@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<opml version="1.0">
+    <head>
+        <title>paul subscriptions in feedly Cloud</title>
+    </head>
+    <body>
+        <outline text="Economics" title="Economics">
+            <outline type="rss" text="Marginal Revolution" title="Marginal Revolution" xmlUrl="http://www.marginalrevolution.com/marginalrevolution/index.rdf" htmlUrl="http://marginalrevolution.com"/>
+            <outline type="rss" text="Austin Vernon" title="Austin Vernon" xmlUrl="https://austinvernon.site/rss.xml" htmlUrl="https://austinvernon.site/"/>
+            <outline type="rss" text="Fake Nous" title="Fake Nous" xmlUrl="http://fakenous.net/?feed=rss2" htmlUrl="https://fakenous.net"/>
+            <outline type="rss" text="Jonah Goldberg | National Review" title="Jonah Goldberg | National Review" xmlUrl="https://www.nationalreview.com/author/jonah-goldberg/feed/" htmlUrl="https://www.nationalreview.com"/>
+            <outline type="rss" text="The Grumpy Economist" title="The Grumpy Economist" xmlUrl="http://johnhcochrane.blogspot.com/feeds/posts/default" htmlUrl="https://johnhcochrane.blogspot.com/"/>
+            <outline type="rss" text="Bet On It" title="Bet On It" xmlUrl="https://betonit.substack.com/feed" htmlUrl="https://betonit.substack.com"/>
+            <outline type="rss" text="Greg Mankiw's Blog" title="Greg Mankiw's Blog" xmlUrl="http://gregmankiw.blogspot.com/feeds/posts/default" htmlUrl="http://gregmankiw.blogspot.com/"/>
+            <outline type="rss" text="EconLog" title="EconLog" xmlUrl="http://econlog.econlib.org/index.xml" htmlUrl="https://www.econlib.org"/>
+            <outline type="rss" text="Casey Handmer's blog" title="Casey Handmer's blog" xmlUrl="https://caseyhandmer.wordpress.com/feed/" htmlUrl="https://caseyhandmer.wordpress.com"/>
+            <outline type="rss" text="In My Tribe" title="In My Tribe" xmlUrl="https://arnoldkling.substack.com/feed/" htmlUrl="https://arnoldkling.substack.com"/>
+            <outline type="rss" text="Overcoming Bias" title="Overcoming Bias" xmlUrl="http://www.overcomingbias.com/feed" htmlUrl="http://www.overcomingbias.com"/>
+            <outline type="rss" text="Ideas" title="Ideas" xmlUrl="http://daviddfriedman.blogspot.com/atom.xml" htmlUrl="http://daviddfriedman.blogspot.com/"/>
+            <outline type="rss" text="askblog" title="askblog" xmlUrl="http://www.arnoldkling.com/blog/feed/" htmlUrl="http://www.arnoldkling.com/blog"/>
+            <outline type="rss" text="Bet On It" title="Bet On It" xmlUrl="https://betonit.blog/feed/" htmlUrl="https://betonit.blog"/>
+            <outline type="rss" text="Slate Star Codex" title="Slate Star Codex" xmlUrl="http://slatestarcodex.com/feed/" htmlUrl="https://slatestarcodex.com"/>
+            <outline type="rss" text="Astral Codex Ten" title="Astral Codex Ten" xmlUrl="https://astralcodexten.substack.com/feed/" htmlUrl="https://astralcodexten.substack.com"/>
+        </outline>
+    </body>
+</opml>

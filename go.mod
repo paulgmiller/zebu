@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/ethereum/go-ethereum v1.10.3
+	github.com/gilliek/go-opml v1.0.0
 	github.com/gin-gonic/gin v1.7.1
 	github.com/ipfs/go-dnslink v0.0.0-20200504100233-0626e50cfeaf
 	github.com/ipfs/go-ipfs-api v0.2.0
@@ -12,6 +13,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	github.com/ungerik/go-rss v0.0.0-20200405130036-81ac15598626
 	github.com/wealdtech/go-ens/v3 v3.4.5
 )
 
@@ -71,6 +73,7 @@ require (
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
+	github.com/paulrosania/go-charset v0.0.0-20190326053356-55c9d7a5834c // indirect
 	github.com/peterh/liner v1.2.0 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
