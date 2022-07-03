@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	//https://pkg.go.dev/github.com/ipfs/go-ipfs-api#Key
 )
@@ -22,20 +21,28 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(hash)
+		log.Println(hash)
 		return
 	}
 
-	log.Printf("opmlpath %s", *opmlpath)
+	backend := NewIpfsBackend(ctx, *keyName)
 
 	if *opmlpath != "" {
-		err := Import(ctx, *opmlpath)
+		log.Printf("opmlpath %s", *opmlpath)
+		imports, err := Import(ctx, *opmlpath)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-	}
+		user, err := backend.GetUserById(backend.GetUserId())
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 
-	backend := NewIpfsBackend(ctx, *keyName)
+		for _, i := range imports {
+			user.Follow(i)
+		}
+		backend.SaveUser(user)
+	}
 
 	serve(backend)
 }

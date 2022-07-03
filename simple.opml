@@ -19,7 +19,6 @@
             <outline type="rss" text="Overcoming Bias" title="Overcoming Bias" xmlUrl="http://www.overcomingbias.com/feed" htmlUrl="http://www.overcomingbias.com"/>
             <outline type="rss" text="Ideas" title="Ideas" xmlUrl="http://daviddfriedman.blogspot.com/atom.xml" htmlUrl="http://daviddfriedman.blogspot.com/"/>
             <outline type="rss" text="askblog" title="askblog" xmlUrl="http://www.arnoldkling.com/blog/feed/" htmlUrl="http://www.arnoldkling.com/blog"/>
-            <outline type="rss" text="Bet On It" title="Bet On It" xmlUrl="https://betonit.blog/feed/" htmlUrl="https://betonit.blog"/>
             <outline type="rss" text="Slate Star Codex" title="Slate Star Codex" xmlUrl="http://slatestarcodex.com/feed/" htmlUrl="https://slatestarcodex.com"/>
             <outline type="rss" text="Astral Codex Ten" title="Astral Codex Ten" xmlUrl="https://astralcodexten.substack.com/feed/" htmlUrl="https://astralcodexten.substack.com"/>
         </outline>

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -112,7 +113,7 @@ func userfeed(backend Backend, c *gin.Context) {
 			}
 			followedposts = append(followedposts, FetchedPost{
 				Post:             p,
-				RenderedContent:  string(content),
+				RenderedContent:  template.HTML(content),
 				Author:           follow,
 				AuthorPublicName: f.PublicName,
 			})
@@ -177,7 +178,7 @@ func userPosts(backend Backend, user User, author string, c *gin.Context) {
 		}
 		userposts = append(userposts, FetchedPost{
 			Post:             p,
-			RenderedContent:  string(content),
+			RenderedContent:  template.HTML(content),
 			Author:           author,
 			AuthorPublicName: user.PublicName,
 		})
@@ -243,7 +244,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 		Created:  time.Now().UTC(),
 		Images:   imagecidrs,
 	}
-	err = backend.SavePost(post, me)
+	err = backend.SavePost(post, &me)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -269,7 +270,7 @@ func acceptFollow(backend Backend, c *gin.Context) {
 		errorPage(errors.Wrap(err, "couldn't resolve followee"), c)
 	}
 
-	user.Follows = append(user.Follows, simpleFollow.Followee)
+	user.Follow(simpleFollow.Followee)
 	backend.SaveUser(user)
 
 	c.Redirect(http.StatusFound, "/user/"+simpleFollow.Followee)

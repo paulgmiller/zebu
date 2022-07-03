@@ -13,34 +13,43 @@ import (
 	"github.com/ungerik/go-rss"
 )
 
-func Import(ctx context.Context, opmplpath string) error {
+func Import(ctx context.Context, opmplpath string) ([]string, error) {
+	importedusers := []string{}
 	doc, err := opml.NewOPMLFromFile(opmplpath)
 	if err != nil {
-		return err
+		return importedusers, err
 	}
 
-	for _, feed := range doc.Body.Outlines {
-		u, err := url.Parse(feed.XMLURL)
-		if err != nil {
-			log.Printf("can't parse %s", feed.XMLURL)
-			continue
+	for _, o := range doc.Body.Outlines {
+		for _, feed := range o.Outlines {
+			u, err := url.Parse(feed.XMLURL)
+			if err != nil {
+				log.Printf("can't parse %s", feed.XMLURL)
+				continue
+			}
+			b := NewIpfsBackend(ctx, u.Host)
+
+			author, err := b.GetUserById(b.GetUserId())
+			if err != nil {
+				log.Printf(err.Error())
+				continue
+			}
+			if author.PublicName == "" {
+				author.PublicName = u.Host
+				author.DisplayName = feed.Text
+			}
+
+			log.Printf("crawling %s, %s", u.Host, feed.XMLURL)
+			Crawl(feed.XMLURL, &author, b)
+			importedusers = append(importedusers, b.GetUserId())
+			log.Printf("saving %v", author)
+			b.SaveUser(author)
 		}
-
-		b := NewIpfsBackend(ctx, u.Host)
-
-		author, err := b.GetUserById(b.GetUserId())
-		if err != nil {
-			log.Printf(err.Error())
-			continue
-		}
-
-		Crawl(feed.XMLURL, author, b)
-
 	}
-	return nil
+	return importedusers, nil
 }
 
-func Crawl(xmlurl string, author User, b Backend) {
+func Crawl(xmlurl string, author *User, b Backend) {
 	log.Printf("fetching %s", xmlurl)
 	resp, err := http.Get(xmlurl)
 	if err != nil {
@@ -48,8 +57,13 @@ func Crawl(xmlurl string, author User, b Backend) {
 		return
 	}
 	channel, err := rss.Regular(resp)
+	if err != nil {
+		log.Printf("%s parsing %s", err, xmlurl)
+		return
+	}
 	previous := ""
 
+	log.Printf("Got %d items", len(channel.Item))
 	for i := len(channel.Item) - 1; i >= 0; i-- {
 		item := channel.Item[i]
 
@@ -58,7 +72,7 @@ func Crawl(xmlurl string, author User, b Backend) {
 			fmt.Println(err)
 		}
 
-		cid, err := AddString(b, item.FullText)
+		cid, err := AddString(b, item.Title+"<br/>"+item.Description)
 		if err != nil {
 			log.Printf("error adding content: %s", err)
 			return
@@ -70,5 +84,6 @@ func Crawl(xmlurl string, author User, b Backend) {
 			Created:  time,
 		}
 		b.SavePost(post, author)
+		previous = author.LastPost
 	}
 }

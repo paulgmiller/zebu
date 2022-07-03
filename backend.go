@@ -33,7 +33,7 @@ type ContentBackend interface {
 	GetUserId() string
 	SaveUser(user User) error
 	GetPosts(user User, count int) ([]Post, error)
-	SavePost(post Post, user User) error
+	SavePost(post Post, user *User) error
 	//too low level?
 	Cat(cid string) (string, error) //remove with helper method.
 	CatReader(cid string) (io.ReadCloser, error)
@@ -81,7 +81,6 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 	if found, _ := ks.Has(keyName); !found {
 		log.Fatal("Coudn't find key in keystore")
 	}
-
 	return backend
 
 }
@@ -106,13 +105,14 @@ func (b *IpfsBackend) writeJson(obj interface{}) (string, error) {
 	return b.shell.Add(&buf)
 }
 
-func (b *IpfsBackend) SavePost(post Post, user User) error {
+func (b *IpfsBackend) SavePost(post Post, user *User) error {
 	postcid, err := b.writeJson(&post)
 	if err != nil {
 		return err
 	}
 	user.LastPost = postcid
-	return b.SaveUser(user)
+	return nil
+	//return b.SaveUser(user)
 }
 
 func (b *IpfsBackend) CatReader(cid string) (io.ReadCloser, error) {
@@ -151,9 +151,17 @@ func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 	if err != nil && strings.HasPrefix(link, ipnsprefix) {
 		usercid = link[len(ipnsprefix):]
 	}
+
+	//temporary remove when we updte dns?
+	if key, _ := b.getKey(context.TODO(), usercid); key != nil {
+		log.Printf("resolved %s -> %s", usercid, key.Id)
+		usercid = key.Id
+	}
+
 	var user User
 	usercid, err = b.shell.Resolve(usercid)
 	if err != nil {
+		log.Printf("failed to resolve %s", usercid)
 		if strings.Contains(err.Error(), "could not resolve name") {
 			return user, nil //bad idea. too late!
 		}
@@ -169,18 +177,27 @@ func (b *IpfsBackend) GetUserId() string {
 	return b.key.Id
 }
 
-func (b *IpfsBackend) EnsureKey(ctx context.Context, keyName string) (*ipfs.Key, error) {
+func (b *IpfsBackend) getKey(ctx context.Context, keyName string) (*ipfs.Key, error) {
 	keys, err := b.shell.KeyList(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Can't get keys %s", err)
 	}
-	var key *ipfs.Key
 	for _, k := range keys {
 		if k.Name == keyName {
-			key = k
+			return k, nil
 		}
 	}
+	return nil, nil
+}
+
+func (b *IpfsBackend) EnsureKey(ctx context.Context, keyName string) (*ipfs.Key, error) {
+	key, err := b.getKey(ctx, keyName)
+	if err != nil {
+		return nil, err
+	}
+
 	if key == nil {
+		log.Printf("generating %s", keyName)
 		key, err = b.shell.KeyGen(ctx, keyName)
 		if err != nil {
 			return nil, fmt.Errorf("Can't create keys %s", keyName)
