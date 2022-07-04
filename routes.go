@@ -244,11 +244,13 @@ func acceptPost(backend Backend, c *gin.Context) {
 		Created:  time.Now().UTC(),
 		Images:   imagecidrs,
 	}
-	err = backend.SavePost(post, &me)
+	postcidr, err := backend.SavePost(post)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
+	me.LastPost = postcidr
+	backend.SaveUser(me) //ignoring erros for now
 
 	c.Redirect(http.StatusFound, "/user/"+backend.GetUserId())
 }

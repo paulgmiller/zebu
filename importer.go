@@ -43,24 +43,34 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 			Crawl(feed.XMLURL, &author, b)
 			importedusers = append(importedusers, b.GetUserId())
 			log.Printf("saving %v", author)
-			b.SaveUser(author)
+			<-b.SaveUser(author) //block
 		}
 	}
 	return importedusers, nil
 }
 
-func Crawl(xmlurl string, author *User, b Backend) {
+func Crawl(xmlurl string, author *User, b Backend) (string, error) {
 	log.Printf("fetching %s", xmlurl)
 	resp, err := http.Get(xmlurl)
 	if err != nil {
-		log.Printf("%s fetching %s", err, xmlurl)
-		return
+		return "", fmt.Errorf("%s fetching %s", err, xmlurl)
+
 	}
 	channel, err := rss.Regular(resp)
 	if err != nil {
-		log.Printf("%s parsing %s", err, xmlurl)
-		return
+		return "", fmt.Errorf("%s parsing %s", err, xmlurl)
 	}
+
+	exisitngposts, err := b.GetPosts(*author, 10)
+	if err != nil {
+		return "", fmt.Errorf("%s parsing %s", err, xmlurl)
+	}
+
+	oldposts := map[string]Post{}
+	for _, p := range exisitngposts {
+		oldposts[p.Content] = p
+	}
+
 	previous := ""
 
 	log.Printf("Got %d items", len(channel.Item))
@@ -75,7 +85,7 @@ func Crawl(xmlurl string, author *User, b Backend) {
 		cid, err := AddString(b, item.Title+"<br/>"+item.Description)
 		if err != nil {
 			log.Printf("error adding content: %s", err)
-			return
+			return "", err
 		}
 		//todo see if we already have a post with this cidr so we don't overwrite
 		post := Post{
@@ -83,7 +93,11 @@ func Crawl(xmlurl string, author *User, b Backend) {
 			Content:  cid,
 			Created:  time,
 		}
-		b.SavePost(post, author)
-		previous = author.LastPost
+		previous, err = b.SavePost(post)
+		if err != nil {
+			log.Printf("error saving post: %s", err)
+			return "", err
+		}
 	}
+	return previous, nil
 }

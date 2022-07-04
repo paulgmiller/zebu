@@ -31,9 +31,9 @@ type KeyBackend interface {
 type ContentBackend interface {
 	GetUserById(usercid string) (User, error)
 	GetUserId() string
-	SaveUser(user User) error
+	SaveUser(user User) chan error
 	GetPosts(user User, count int) ([]Post, error)
-	SavePost(post Post, user *User) error
+	SavePost(post Post) (string, error)
 	//too low level?
 	Cat(cid string) (string, error) //remove with helper method.
 	CatReader(cid string) (io.ReadCloser, error)
@@ -105,14 +105,8 @@ func (b *IpfsBackend) writeJson(obj interface{}) (string, error) {
 	return b.shell.Add(&buf)
 }
 
-func (b *IpfsBackend) SavePost(post Post, user *User) error {
-	postcid, err := b.writeJson(&post)
-	if err != nil {
-		return err
-	}
-	user.LastPost = postcid
-	return nil
-	//return b.SaveUser(user)
+func (b *IpfsBackend) SavePost(post Post) (string, error) {
+	return b.writeJson(&post)
 }
 
 func (b *IpfsBackend) CatReader(cid string) (io.ReadCloser, error) {
@@ -224,22 +218,27 @@ func (b *IpfsBackend) ImportKey(kpbytes []byte) error {
 	return b.keystore.Put(b.key.Name, privatekey)
 }
 
-func (b *IpfsBackend) SaveUser(user User) error {
-	usercid, err := b.writeJson(&user)
-	if err != nil {
-		return err
-	}
-
-	//too slow to block responses
+func (b *IpfsBackend) SaveUser(user User) chan error {
+	result := make(chan error, 1)
+	//too slow to block responses in most cases....
 	go func() {
+
+		usercid, err := b.writeJson(&user)
+		if err != nil {
+			result <- err
+			return
+		}
+
 		resp, err := b.shell.PublishWithDetails(usercid, b.key.Name, 0, 0, false)
 		if err != nil {
 			log.Printf("Failed to post user %s to %s\n", usercid, b.key.Name)
+			result <- err
 			return
 		}
 		log.Printf("Posted user %s to %s\n", usercid, resp.Name)
+		result <- nil
 	}()
-	return nil
+	return result
 }
 
 //offset
