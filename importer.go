@@ -20,6 +20,8 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 		return importedusers, err
 	}
 
+	results := []chan error{}
+
 	for _, o := range doc.Body.Outlines {
 		for _, feed := range o.Outlines {
 			u, err := url.Parse(feed.XMLURL)
@@ -43,8 +45,11 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 			Crawl(feed.XMLURL, &author, b)
 			importedusers = append(importedusers, b.GetUserId())
 			log.Printf("saving %v", author)
-			<-b.SaveUser(author) //block
+			results = append(results, b.SaveUser(author)) //not blocking yet.
 		}
+	}
+	for _, r := range results {
+		<-r
 	}
 	return importedusers, nil
 }
@@ -55,10 +60,6 @@ func Crawl(xmlurl string, author *User, b Backend) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%s fetching %s", err, xmlurl)
 
-	}
-	channel, err := rss.Regular(resp)
-	if err != nil {
-		return "", fmt.Errorf("%s parsing %s", err, xmlurl)
 	}
 
 	exisitngposts, err := b.GetPosts(*author, 10)
@@ -73,7 +74,11 @@ func Crawl(xmlurl string, author *User, b Backend) (string, error) {
 
 	previous := ""
 
-	log.Printf("Got %d items", len(channel.Item))
+	channel, err := rss.Regular(resp)
+	if err != nil {
+		return "", fmt.Errorf("%s parsing %s", err, xmlurl)
+	}
+	log.Printf("Got %d rss items", len(channel.Item))
 	for i := len(channel.Item) - 1; i >= 0; i-- {
 		item := channel.Item[i]
 
@@ -87,11 +92,15 @@ func Crawl(xmlurl string, author *User, b Backend) (string, error) {
 			log.Printf("error adding content: %s", err)
 			return "", err
 		}
-		//todo see if we already have a post with this cidr so we don't overwrite
-		post := Post{
-			Previous: previous,
-			Content:  cid,
-			Created:  time,
+		var post Post
+		if oldpost, found := oldposts[cid]; found {
+			post = oldpost //stop doing this once we have one that doesn't match so an edit doesn't delete things?
+		} else {
+			post = Post{
+				Previous: previous,
+				Content:  cid,
+				Created:  time,
+			}
 		}
 		previous, err = b.SavePost(post)
 		if err != nil {
@@ -99,5 +108,15 @@ func Crawl(xmlurl string, author *User, b Backend) (string, error) {
 			return "", err
 		}
 	}
+
+	/*feed, err := rss.Atom(resp)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, entry := range feed.Entry {
+		fmt.Println(entry.Updated + " " + entry.Title)
+	}*/
+
 	return previous, nil
 }
