@@ -6,11 +6,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 
+	"github.com/araddon/dateparse"
 	"github.com/gilliek/go-opml/opml"
-	"github.com/ungerik/go-rss"
+	"github.com/mmcdole/gofeed"
 )
 
 func Import(ctx context.Context, opmplpath string) ([]string, error) {
@@ -56,10 +56,11 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 
 func Crawl(xmlurl string, author *User, b Backend) (string, error) {
 	log.Printf("fetching %s", xmlurl)
-	resp, err := http.Get(xmlurl)
+	fp := gofeed.NewParser()
+	fp.UserAgent = "github.com/paulgmiller/zebu"
+	feed, err := fp.ParseURL(xmlurl)
 	if err != nil {
 		return "", fmt.Errorf("%s fetching %s", err, xmlurl)
-
 	}
 
 	exisitngposts, err := b.GetPosts(*author, 10)
@@ -74,17 +75,16 @@ func Crawl(xmlurl string, author *User, b Backend) (string, error) {
 
 	previous := ""
 
-	channel, err := rss.Regular(resp)
-	if err != nil {
-		return "", fmt.Errorf("%s parsing %s", err, xmlurl)
-	}
-	log.Printf("Got %d rss items", len(channel.Item))
-	for i := len(channel.Item) - 1; i >= 0; i-- {
-		item := channel.Item[i]
+	log.Printf("Got %d rss items", len(feed.Items))
+	for i := len(feed.Items) - 1; i >= 0; i-- {
+		item := feed.Items[i]
 
-		time, err := item.PubDate.Parse()
+		time, err := dateparse.ParseAny(item.Published)
 		if err != nil {
-			fmt.Println(err)
+			time, err = dateparse.ParseAny(item.Updated)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 		}
 
 		cid, err := AddString(b, item.Title+"<br/>"+item.Description)
@@ -108,15 +108,6 @@ func Crawl(xmlurl string, author *User, b Backend) (string, error) {
 			return "", err
 		}
 	}
-
-	/*feed, err := rss.Atom(resp)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	for _, entry := range feed.Entry {
-		fmt.Println(entry.Updated + " " + entry.Title)
-	}*/
 
 	return previous, nil
 }
