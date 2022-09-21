@@ -49,6 +49,7 @@ type IpfsBackend struct {
 
 func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 
+	//https: //github.com/ipfs/kubo/tree/master/docs/examples/kubo-as-a-library
 	shell := ipfs.NewShell("localhost:5001")
 	if !shell.IsUp() {
 		log.Fatal("Ipfs not fond on localhost:5001 please install https://docs.ipfs.io/install/command-line/#official-distributions")
@@ -235,7 +236,7 @@ func (b *IpfsBackend) SaveUser(user User) chan error {
 			result <- err
 			return
 		}
-		log.Printf("Posted user %s to %s\n", usercid, resp.Name)
+		log.Printf("Posted user %s to %s:%s\n", usercid, b.key.Name, resp.Name)
 		result <- nil
 	}()
 	return result
@@ -253,6 +254,6 @@ func (b *IpfsBackend) GetPosts(user User, count int) ([]Post, error) {
 		posts = append(posts, post)
 		head = post.Previous
 	}
-	log.Printf("got %d posts from %s", len(posts), user.PublicName)
+	//log.Printf("got %d posts from %s", len(posts), user.PublicName)
 	return posts, nil
 }

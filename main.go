@@ -37,7 +37,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-
 		for _, i := range imports {
 			user.Follow(i)
 		}

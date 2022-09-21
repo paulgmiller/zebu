@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"sync"
 
 	"github.com/araddon/dateparse"
 	"github.com/gilliek/go-opml/opml"
@@ -19,9 +20,8 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 	if err != nil {
 		return importedusers, err
 	}
-
-	results := []chan error{}
-
+	var wg sync.WaitGroup
+	seen := map[string]bool{}
 	for _, o := range doc.Body.Outlines {
 		for _, feed := range o.Outlines {
 			u, err := url.Parse(feed.XMLURL)
@@ -29,28 +29,35 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 				log.Printf("can't parse %s", feed.XMLURL)
 				continue
 			}
+			if seen[u.Host] {
+				log.Printf("skipping %s", feed.XMLURL)
+				continue
+			}
+			seen[u.Host] = true
 			b := NewIpfsBackend(ctx, u.Host)
 
 			author, err := b.GetUserById(b.GetUserId())
 			if err != nil {
-				log.Printf(err.Error())
+				log.Println(err.Error())
 				continue
 			}
 			if author.PublicName == "" {
 				author.PublicName = u.Host
 				author.DisplayName = feed.Text
 			}
-
-			log.Printf("crawling %s, %s", u.Host, feed.XMLURL)
-			Crawl(feed.XMLURL, &author, b)
 			importedusers = append(importedusers, b.GetUserId())
-			log.Printf("saving %v", author)
-			results = append(results, b.SaveUser(author)) //not blocking yet.
+			wg.Add(1)
+			go func(url string) {
+
+				log.Printf("crawling %s, %s", u.Host, url)
+				Crawl(url, &author, b)
+				log.Printf("saving %v", author)
+				<-b.SaveUser(author) //not blocking yet.
+				wg.Done()
+			}(feed.XMLURL)
 		}
 	}
-	for _, r := range results {
-		<-r
-	}
+	wg.Wait()
 	return importedusers, nil
 }
 
@@ -74,8 +81,9 @@ func Crawl(xmlurl string, author *User, b Backend) (string, error) {
 	}
 
 	previous := ""
-
-	log.Printf("Got %d rss items", len(feed.Items))
+	if len(feed.Items) == 0 {
+		log.Printf("Got 0 items from %s", xmlurl)
+	}
 	for i := len(feed.Items) - 1; i >= 0; i-- {
 		item := feed.Items[i]
 
