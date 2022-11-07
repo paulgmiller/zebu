@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/ipfs/go-dnslink"
 	ipfs "github.com/ipfs/go-ipfs-api"
@@ -32,6 +33,7 @@ type ContentBackend interface {
 	GetUserById(usercid string) (User, error)
 	GetUserId() string
 	SaveUser(user User) chan error
+	SaveUserCid(user User) (UserNameRecord, error)
 	GetPosts(user User, count int) ([]Post, error)
 	SavePost(post Post) (string, error)
 	//too low level?
@@ -41,10 +43,16 @@ type ContentBackend interface {
 }
 
 type IpfsBackend struct {
-	shell     *ipfs.Shell
-	key       *ipfs.Key
-	namecache map[string]string
-	keystore  keystore.Keystore
+	//content
+	shell *ipfs.Shell
+
+	//keys
+	key      *ipfs.Key
+	keystore keystore.Keystore
+
+	//pubsub
+	lock    sync.RWMutex
+	records map[string]UserNameRecord
 }
 
 func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
@@ -70,9 +78,8 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 	}
 
 	backend := &IpfsBackend{
-		shell:     shell,
-		namecache: map[string]string{},
-		keystore:  ks,
+		shell:    shell,
+		keystore: ks,
 	}
 
 	if backend.key, err = backend.EnsureKey(ctx, keyName); err != nil {
@@ -82,8 +89,53 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 	if found, _ := ks.Has(keyName); !found {
 		log.Fatal("Coudn't find key in keystore")
 	}
+	//TODO need a way to communicate failures back
+	if err := backend.listen(ctx); err != nil {
+		log.Fatal("coudlnt set up listener")
+	}
 	return backend
+}
 
+func (b *IpfsBackend) listen(ctx context.Context) error {
+	sub, err := b.shell.PubSubSubscribe("/zebu")
+	if err != nil {
+		return err
+	}
+	go func() {
+		for {
+			if ctx.Err() != nil {
+				break
+			}
+
+			msg, err := sub.Next()
+			if err != nil {
+				log.Fatalf("subscription broke") //TODO what kind of errors should expect here Can we recver or should we tear down?
+			}
+
+			//would msg.sequence number replace
+			unr := &UserNameRecord{}
+			if err = json.Unmarshal(msg.Data, unr); err != nil {
+				log.Printf("unserializable message %v", msg.Data)
+				continue
+			}
+
+			if !unr.Validate() {
+				//be nice to track peers and stop taking invalid messages from bad ones. (sigh reimplementing ipns I would guess)
+				log.Printf("invalid message %v", unr)
+				continue
+			}
+
+			b.lock.RLock()
+			defer b.lock.RUnlock()
+			existing := b.records[unr.PubKey]
+			if unr.Sequence > existing.Sequence {
+				b.lock.Lock()
+				b.records[unr.PubKey] = *unr
+				b.lock.Unlock()
+			}
+		}
+	}()
+	return nil
 }
 
 func (b *IpfsBackend) readJson(cid string, obj interface{}) error {
@@ -221,25 +273,55 @@ func (b *IpfsBackend) ImportKey(kpbytes []byte) error {
 
 func (b *IpfsBackend) SaveUser(user User) chan error {
 	result := make(chan error, 1)
+	unr, err := b.SaveUserCid(user)
+	if err != nil {
+		result <- err
+		return result
+	}
 	//too slow to block responses in most cases....
 	go func() {
 
-		usercid, err := b.writeJson(&user)
+		resp, err := b.shell.PublishWithDetails(unr.CID, b.key.Name, 0, 0, false)
 		if err != nil {
+			log.Printf("Failed to post user %s to %s\n", unr.CID, b.key.Name)
 			result <- err
 			return
 		}
-
-		resp, err := b.shell.PublishWithDetails(usercid, b.key.Name, 0, 0, false)
-		if err != nil {
-			log.Printf("Failed to post user %s to %s\n", usercid, b.key.Name)
-			result <- err
-			return
-		}
-		log.Printf("Posted user %s to %s:%s\n", usercid, b.key.Name, resp.Name)
+		log.Printf("Posted user %s to %s:%s\n", unr.CID, b.key.Name, resp.Name)
 		result <- nil
 	}()
 	return result
+}
+
+func (b *IpfsBackend) SaveUserCid(user User) (UserNameRecord, error) {
+	cid, err := b.writeJson(&user)
+	if err != nil {
+		return UserNameRecord{}, err
+	}
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	existing := b.records[user.PublicName]
+	existing.Sequence += 1
+	existing.PubKey = user.PublicName //just in case there was no existing
+	existing.CID = cid
+	return existing, nil
+}
+
+func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
+	ujsonbytes, err := json.Marshal(u)
+	if err != nil {
+		return err
+	}
+	ujson := string(ujsonbytes)
+
+	//so to start with we'll publish everythig to one path to make everthing findable. Eventually that will explode
+	if err := b.shell.PubSubPublish("/zebu", ujson); err != nil {
+		return err
+	}
+	if b.shell.PubSubPublish("/zebu/"+string(u.PubKey), ujson); err != nil {
+		return err
+	}
+	return nil
 }
 
 //offset

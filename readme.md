@@ -22,3 +22,7 @@ added QmVFev3MJosBY2YQHrv7N3nTa1f2yCSg1YKWQ226YHgiGQ zebu
 https://eips.ethereum.org/EIPS/eip-3668
 https://discuss.ens.domains/t/layer-2-scaling-and-subdomains/6286/10
 https://github.com/ensdomains/ens-contracts/tree/master/contracts/wrapper
+
+## TODO 
+better image redndering.
+https://galleriajs.github.io/themes/
