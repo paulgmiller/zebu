@@ -8,31 +8,20 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 	"sync"
 
 	"github.com/ipfs/go-dnslink"
 	ipfs "github.com/ipfs/go-ipfs-api"
-	keystore "github.com/ipfs/go-ipfs-keystore"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/mitchellh/go-homedir"
 )
 
 type Backend interface {
 	ContentBackend
-	KeyBackend
-}
-
-type KeyBackend interface {
-	ExportKey() ([]byte, error)
-	EnsureKey(context.Context, string) (*ipfs.Key, error)
 }
 
 type ContentBackend interface {
 	GetUserById(usercid string) (User, error)
-	GetUserId() string
-	SaveUser(user User) chan error
+	//GetUserId() string
 	SaveUserCid(user User) (UserNameRecord, error)
 	GetPosts(user User, count int) ([]Post, error)
 	SavePost(post Post) (string, error)
@@ -45,10 +34,6 @@ type ContentBackend interface {
 type IpfsBackend struct {
 	//content
 	shell *ipfs.Shell
-
-	//keys
-	key      *ipfs.Key
-	keystore keystore.Keystore
 
 	//pubsub
 	lock    sync.RWMutex
@@ -63,32 +48,10 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 		log.Fatal("Ipfs not fond on localhost:5001 please install https://docs.ipfs.io/install/command-line/#official-distributions")
 	}
 
-	keystoredir, _ := homedir.Expand("~/.ipfs/keystore")
-	if ipfspath, found := os.LookupEnv("IPFS_PATH"); found {
-		keystoredir = ipfspath + "/keystore"
-	}
-	if _, err := os.Stat(keystoredir); os.IsNotExist(err) {
-		//stupid snap
-		keystoredir, _ = homedir.Expand("~/snap/ipfs/common/keystore")
-	}
-
-	ks, err := keystore.NewFSKeystore(keystoredir)
-	if err != nil {
-		log.Fatalf("Can't create keystore %s", keystoredir)
-	}
-
 	backend := &IpfsBackend{
-		shell:    shell,
-		keystore: ks,
+		shell: shell,
 	}
 
-	if backend.key, err = backend.EnsureKey(ctx, keyName); err != nil {
-		log.Fatal(err.Error())
-	}
-
-	if found, _ := ks.Has(keyName); !found {
-		log.Fatal("Coudn't find key in keystore")
-	}
 	//TODO need a way to communicate failures back
 	if err := backend.listen(ctx); err != nil {
 		log.Fatal("coudlnt set up listener")
@@ -189,20 +152,15 @@ func AddString(backend Backend, content string) (string, error) {
 
 const ipnsprefix = "/ipns/"
 
+//so a user id could be ens/dns/or ethereum public key
 func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 
 	//todo resolve ens address https://github.com/wealdtech/go-ens and infura
+	//but to start use ResolveEthLink/https://eth.link/
 
-	//does this do anything?
 	link, err := dnslink.Resolve(usercid)
 	if err != nil && strings.HasPrefix(link, ipnsprefix) {
 		usercid = link[len(ipnsprefix):]
-	}
-
-	//temporary remove when we updte dns?
-	if key, _ := b.getKey(context.TODO(), usercid); key != nil {
-		log.Printf("resolved %s -> %s", usercid, key.Id)
-		usercid = key.Id
 	}
 
 	var user User
@@ -212,85 +170,12 @@ func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
 		if strings.Contains(err.Error(), "could not resolve name") {
 			return user, nil //bad idea. too late!
 		}
-		return user, fmt.Errorf("can't resolve key: %w", err)
+		return user, fmt.Errorf("can't resolve cid: %w", err)
 
 	}
 	err = b.readJson(usercid, &user)
 	log.Printf("got user %s/%s", user.PublicName, usercid)
 	return user, err
-}
-
-func (b *IpfsBackend) GetUserId() string {
-	return b.key.Id
-}
-
-func (b *IpfsBackend) getKey(ctx context.Context, keyName string) (*ipfs.Key, error) {
-	keys, err := b.shell.KeyList(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("Can't get keys %s", err)
-	}
-	for _, k := range keys {
-		if k.Name == keyName {
-			return k, nil
-		}
-	}
-	return nil, nil
-}
-
-func (b *IpfsBackend) EnsureKey(ctx context.Context, keyName string) (*ipfs.Key, error) {
-	key, err := b.getKey(ctx, keyName)
-	if err != nil {
-		return nil, err
-	}
-
-	if key == nil {
-		log.Printf("generating %s", keyName)
-		key, err = b.shell.KeyGen(ctx, keyName)
-		if err != nil {
-			return nil, fmt.Errorf("Can't create keys %s", keyName)
-		}
-	}
-	return key, nil
-}
-
-func (b *IpfsBackend) ExportKey() ([]byte, error) {
-	privatekey, err := b.keystore.Get(b.key.Name)
-	if err != nil {
-		return nil, err
-	}
-	return crypto.MarshalPrivateKey(privatekey)
-}
-
-func (b *IpfsBackend) ImportKey(kpbytes []byte) error {
-
-	privatekey, err := crypto.UnmarshalPrivateKey(kpbytes)
-	if err != nil {
-		return err
-	}
-	//overwrites exiting
-	return b.keystore.Put(b.key.Name, privatekey)
-}
-
-func (b *IpfsBackend) SaveUser(user User) chan error {
-	result := make(chan error, 1)
-	unr, err := b.SaveUserCid(user)
-	if err != nil {
-		result <- err
-		return result
-	}
-	//too slow to block responses in most cases....
-	go func() {
-
-		resp, err := b.shell.PublishWithDetails(unr.CID, b.key.Name, 0, 0, false)
-		if err != nil {
-			log.Printf("Failed to post user %s to %s\n", unr.CID, b.key.Name)
-			result <- err
-			return
-		}
-		log.Printf("Posted user %s to %s:%s\n", unr.CID, b.key.Name, resp.Name)
-		result <- nil
-	}()
-	return result
 }
 
 func (b *IpfsBackend) SaveUserCid(user User) (UserNameRecord, error) {

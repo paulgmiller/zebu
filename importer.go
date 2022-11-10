@@ -29,6 +29,7 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 				log.Printf("can't parse %s", feed.XMLURL)
 				continue
 			}
+			userid := u.Host //was using b.GetUserId() but that doesn't make sesne need to generate public key for each?
 			if seen[u.Host] {
 				log.Printf("skipping %s", feed.XMLURL)
 				continue
@@ -36,7 +37,7 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 			seen[u.Host] = true
 			b := NewIpfsBackend(ctx, u.Host)
 
-			author, err := b.GetUserById(b.GetUserId())
+			author, err := b.GetUserById(userid)
 			if err != nil {
 				log.Println(err.Error())
 				continue
@@ -45,14 +46,14 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 				author.PublicName = u.Host
 				author.DisplayName = feed.Text
 			}
-			importedusers = append(importedusers, b.GetUserId())
+			importedusers = append(importedusers, userid)
 			wg.Add(1)
 			go func(url string) {
 
 				log.Printf("crawling %s, %s", u.Host, url)
 				Crawl(url, &author, b)
 				log.Printf("saving %v", author)
-				<-b.SaveUser(author) //not blocking yet.
+				//	<-b.SaveUser(author) //not blocking yet.
 				wg.Done()
 			}(feed.XMLURL)
 		}

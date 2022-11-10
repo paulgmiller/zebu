@@ -2,19 +2,15 @@ package main
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
-	"github.com/skip2/go-qrcode"
 )
 
 func serve(backend Backend) {
@@ -31,21 +27,23 @@ func serve(backend Backend) {
 	router.POST("/post", func(c *gin.Context) {
 		acceptPost(backend, c)
 	})
+
+	router.POST("/sign", func(c *gin.Context) {
+		acceptPost(backend, c)
+	})
+
 	router.POST("/follow", func(c *gin.Context) {
 		acceptFollow(backend, c)
 	})
-	router.POST("/register", func(c *gin.Context) {
+	/*router.POST("/register", func(c *gin.Context) {
 		registerPublicName(backend, c)
 	})
 	router.GET("/register", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "register.tmpl", gin.H{})
-	})
+	})*/
 
 	router.GET("/user/:id", func(c *gin.Context) {
 		userpage(backend, c)
-	})
-	router.GET("/key", func(c *gin.Context) {
-		qrCode(backend, c)
 	})
 	router.GET("/img/:cidr", func(c *gin.Context) {
 		cidr := c.Param("cidr")
@@ -63,26 +61,21 @@ func serve(backend Backend) {
 	log.Print(router.Run(":9000").Error())
 }
 
-//look may a security hole
-func qrCode(backend Backend, c *gin.Context) {
-	key, err := backend.ExportKey()
-	if err != nil {
-		errorPage(err, c)
-		return
-	}
-	//log.Printf("dumping key: %s", hex.EncodeToString(key))
-	var png []byte
-	png, err = qrcode.Encode(hex.EncodeToString(key), qrcode.Low, 256)
-	if err != nil {
-		errorPage(err, c)
-		return
-	}
-	contentType := "image/png"
-	c.Data(http.StatusOK, contentType, png)
-}
-
+//show what a user is following rahter than their posts.
 func userfeed(backend Backend, c *gin.Context) {
-	me, err := backend.GetUserById(backend.GetUserId())
+	var simpleUser simpleuser
+	if err := c.ShouldBindUri(&simpleUser); err != nil {
+		errorPage(err, c)
+		return
+	}
+
+	if simpleUser.Id == "" {
+		//this didn't work
+		errorPage(fmt.Errorf("no user supplied"), c)
+		return
+	}
+
+	me, err := backend.GetUserById(simpleUser.Id)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -123,7 +116,7 @@ func userfeed(backend Backend, c *gin.Context) {
 	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
 		"Posts":          followedposts,
-		"UserId":         backend.GetUserId(),
+		"UserId":         simpleUser.Id,
 		"UserPublicName": me.PublicName,
 	})
 }
@@ -195,7 +188,20 @@ type simplePost struct {
 }
 
 func acceptPost(backend Backend, c *gin.Context) {
-	me, err := backend.GetUserById(backend.GetUserId())
+
+	var simpleUser simpleuser
+	if err := c.ShouldBindUri(&simpleUser); err != nil {
+		errorPage(err, c)
+		return
+	}
+
+	if simpleUser.Id == "" {
+		//this didn't work
+		errorPage(fmt.Errorf("no user supplied"), c)
+		return
+	}
+
+	me, err := backend.GetUserById(simpleUser.Id)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -250,9 +256,10 @@ func acceptPost(backend Backend, c *gin.Context) {
 		return
 	}
 	me.LastPost = postcidr
-	backend.SaveUser(me) //ignoring erros for now
+	backend.SaveUserCid(me) //ignoring erros for now
 
-	c.Redirect(http.StatusFound, "/user/"+backend.GetUserId())
+	//redirect to a signing page. Eventually ajax
+	c.Redirect(http.StatusFound, "/user/"+simpleUser.Id)
 }
 
 type simpleFollow struct {
@@ -260,7 +267,19 @@ type simpleFollow struct {
 }
 
 func acceptFollow(backend Backend, c *gin.Context) {
-	user, err := backend.GetUserById(backend.GetUserId())
+	var simpleUser simpleuser
+	if err := c.ShouldBindUri(&simpleUser); err != nil {
+		errorPage(err, c)
+		return
+	}
+
+	if simpleUser.Id == "" {
+		//this didn't work
+		errorPage(fmt.Errorf("no user supplied"), c)
+		return
+	}
+
+	user, err := backend.GetUserById(simpleUser.Id)
 	if err != nil {
 		errorPage(err, c)
 	}
@@ -273,8 +292,9 @@ func acceptFollow(backend Backend, c *gin.Context) {
 	}
 
 	user.Follow(simpleFollow.Followee)
-	backend.SaveUser(user)
+	backend.SaveUserCid(user)
 
+	//redirect to a signing page. Eventually ajax
 	c.Redirect(http.StatusFound, "/user/"+simpleFollow.Followee)
 }
 
@@ -282,6 +302,7 @@ type simpleRegister struct {
 	PublicName string `form:"publicname"`
 }
 
+/* This still makes some sense. Give them a domain name if their account has more than some eth in it.
 func registerPublicName(backend Backend, c *gin.Context) {
 	var simpleRegister simpleRegister
 	c.Bind(&simpleRegister)
@@ -305,7 +326,8 @@ func registerPublicName(backend Backend, c *gin.Context) {
 		errorPage(err, c)
 	}
 	user.PublicName = publicname + ".northbriton.net"
-	backend.SaveUser(user)
+	backend.SaveUserCid(user)
 
 	c.Redirect(http.StatusFound, "/")
 }
+*/
