@@ -28,8 +28,8 @@ func serve(backend Backend) {
 		acceptPost(backend, c)
 	})
 
-	router.POST("/sign", func(c *gin.Context) {
-		acceptPost(backend, c)
+	router.GET("/sign", func(c *gin.Context) {
+		sign(backend, c)
 	})
 
 	router.POST("/follow", func(c *gin.Context) {
@@ -185,6 +185,10 @@ func userPosts(backend Backend, user User, author string, c *gin.Context) {
 
 type simplePost struct {
 	Post string `form:"post"`
+}
+
+func sign(backend Backend, c *gin.Context) {
+	c.HTML(http.StatusOK, "sign.tmpl", gin.H{})
 }
 
 func acceptPost(backend Backend, c *gin.Context) {

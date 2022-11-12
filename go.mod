@@ -8,7 +8,7 @@ require (
 	github.com/gilliek/go-opml v1.0.0
 	github.com/gin-gonic/gin v1.7.1
 	github.com/ipfs/go-dnslink v0.0.0-20200504100233-0626e50cfeaf
-	github.com/ipfs/go-ipfs-api v0.2.0
+	github.com/ipfs/go-ipfs-api v0.3.0
 	github.com/ipfs/go-ipfs-keystore v0.0.2
 	github.com/libp2p/go-libp2p-core v0.8.0
 	github.com/mitchellh/go-homedir v1.1.0
@@ -48,7 +48,7 @@ require (
 	github.com/holiman/uint256 v1.1.1 // indirect
 	github.com/huin/goupnp v1.0.1-0.20210310174557-0ca763054c88 // indirect
 	github.com/ipfs/go-cid v0.0.7 // indirect
-	github.com/ipfs/go-ipfs-files v0.0.8 // indirect
+	github.com/ipfs/go-ipfs-files v0.0.9 // indirect
 	github.com/ipfs/go-log v1.0.4 // indirect
 	github.com/ipfs/go-log/v2 v2.1.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect

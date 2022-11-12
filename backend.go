@@ -54,15 +54,17 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 
 	//TODO need a way to communicate failures back
 	if err := backend.listen(ctx); err != nil {
-		log.Fatal("coudlnt set up listener")
+		log.Fatalf("coudlnt set up listener, %s", err)
 	}
 	return backend
 }
 
+const centraltopic = "zebu"
+
 func (b *IpfsBackend) listen(ctx context.Context) error {
-	sub, err := b.shell.PubSubSubscribe("/zebu")
+	sub, err := b.shell.PubSubSubscribe(centraltopic)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to subsciribe to %s %w", centraltopic, err)
 	}
 	go func() {
 		for {
