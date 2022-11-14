@@ -21,6 +21,7 @@ type Backend interface {
 
 type ContentBackend interface {
 	GetUserById(usercid string) (User, error)
+	PublishUser(UserNameRecord) error
 	//GetUserId() string
 	SaveUserCid(user User) (UserNameRecord, error)
 	GetPosts(user User, count int) ([]Post, error)
@@ -165,13 +166,13 @@ func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 		userid = link[len(ipnsprefix):]
 	}
 
-	var user User
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 	userrecord, found := b.records[userid]
 	if !found {
-		return user, nil //bad idea. too late!
+		return User{PublicName: userid}, nil //bad idea. too late!
 	}
+	var user User
 	err = b.readJson(userrecord.CID, &user)
 	log.Printf("got user %s/%s", user.PublicName, userrecord.CID)
 	return user, err
@@ -197,6 +198,17 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 		return err
 	}
 	ujson := string(ujsonbytes)
+	{
+		b.lock.RLock()
+		defer b.lock.RLock()
+		old, found := b.records[u.PubKey]
+		if found && old.Sequence > u.Sequence {
+			return fmt.Errorf("found newer record with sequence %d", old.Sequence)
+		}
+		b.lock.Lock()
+		defer b.lock.Lock()
+		b.records[u.PubKey] = u
+	}
 
 	//so to start with we'll publish everythig to one path to make everthing findable. Eventually that will explode
 	if err := b.shell.PubSubPublish("/zebu", ujson); err != nil {

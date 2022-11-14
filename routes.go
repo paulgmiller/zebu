@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -32,7 +33,7 @@ func serve(backend Backend) {
 		acceptPost(backend, c)
 	})
 
-	router.GET("/sign", func(c *gin.Context) {
+	router.POST("/sign", func(c *gin.Context) {
 		sign(backend, c)
 	})
 
@@ -185,14 +186,24 @@ func userPosts(backend Backend, user User, author string, c *gin.Context) {
 }
 
 func sign(backend Backend, c *gin.Context) {
-	c.HTML(http.StatusOK, "sign.tmpl", gin.H{})
+	var unr UserNameRecord
+	err := c.BindJSON(&unr)
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+	err = backend.PublishUser(unr)
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+	c.Status(200)
 }
 
 func acceptPost(backend Backend, c *gin.Context) {
 
 	form, err := c.MultipartForm()
 	if err != nil {
-		log.Printf("fudgeciles")
 		errorPage(err, c)
 		return
 	}
@@ -247,6 +258,8 @@ func acceptPost(backend Backend, c *gin.Context) {
 		errorPage(err, c)
 		return
 	}
+	jsonrecord, _ := json.Marshal(posterrecord)
+	log.Printf("returning %s", jsonrecord)
 	c.JSON(200, posterrecord)
 }
 

@@ -18,7 +18,7 @@ import (
 type UserNameRecord struct {
 	CID       string
 	Sequence  uint64
-	Signature []byte `json:omitempty`
+	Signature []byte `json:"Signature,omitempty"`
 	PubKey    string //should we use bytes?
 }
 
