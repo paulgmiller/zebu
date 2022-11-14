@@ -22,7 +22,11 @@ func serve(backend Backend) {
 	}
 	router.SetHTMLTemplate(t)
 	router.GET("/", func(c *gin.Context) {
-		userfeed(backend, c)
+		account, err := c.Cookie("zebu_account")
+		if err == http.ErrNoCookie {
+			home(backend, c)
+		}
+		userfeed(backend, c, account)
 	})
 	router.POST("/post", func(c *gin.Context) {
 		acceptPost(backend, c)
@@ -61,30 +65,27 @@ func serve(backend Backend) {
 	log.Print(router.Run(":9000").Error())
 }
 
+func home(backend Backend, c *gin.Context) {
+	//
+	c.HTML(http.StatusOK, "index.tmpl", gin.H{
+		"Posts":          []FetchedPost{},
+		"UserId":         c.Cookie,
+		"UserPublicName": "nobody",
+	})
+}
+
 //show what a user is following rahter than their posts.
-func userfeed(backend Backend, c *gin.Context) {
-	var simpleUser simpleuser
-	if err := c.ShouldBindUri(&simpleUser); err != nil {
-		errorPage(err, c)
-		return
-	}
-
-	if simpleUser.Id == "" {
-		//this didn't work
-		errorPage(fmt.Errorf("no user supplied"), c)
-		return
-	}
-
-	me, err := backend.GetUserById(simpleUser.Id)
+func userfeed(backend Backend, c *gin.Context, account string) {
+	me, err := backend.GetUserById(account)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
 
-	if me.PublicName == "" {
+	/*if me.PublicName == "" {
 		c.HTML(http.StatusOK, "register.tmpl", gin.H{})
 		return
-	}
+	}*/
 
 	var followedposts []FetchedPost
 	for _, follow := range me.Follows {
@@ -114,9 +115,9 @@ func userfeed(backend Backend, c *gin.Context) {
 	}
 	//users could lie abotu time but trust for now
 	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{
+	c.HTML(http.StatusOK, "user.tmpl", gin.H{
 		"Posts":          followedposts,
-		"UserId":         simpleUser.Id,
+		"UserId":         account,
 		"UserPublicName": me.PublicName,
 	})
 }
@@ -183,39 +184,26 @@ func userPosts(backend Backend, user User, author string, c *gin.Context) {
 	})
 }
 
-type simplePost struct {
-	Post string `form:"post"`
-}
-
 func sign(backend Backend, c *gin.Context) {
 	c.HTML(http.StatusOK, "sign.tmpl", gin.H{})
 }
 
 func acceptPost(backend Backend, c *gin.Context) {
 
-	var simpleUser simpleuser
-	if err := c.ShouldBindUri(&simpleUser); err != nil {
-		errorPage(err, c)
-		return
-	}
-
-	if simpleUser.Id == "" {
-		//this didn't work
-		errorPage(fmt.Errorf("no user supplied"), c)
-		return
-	}
-
-	me, err := backend.GetUserById(simpleUser.Id)
-	if err != nil {
-		errorPage(err, c)
-		return
-	}
-
 	form, err := c.MultipartForm()
 	if err != nil {
+		log.Printf("fudgeciles")
 		errorPage(err, c)
 		return
 	}
+
+	log.Printf("got post %v", form)
+
+	poster, err := backend.GetUserById(form.Value["account"][0])
+	if err != nil {
+		return
+	}
+
 	images := form.File["images"]
 	imagecidrs := []string{}
 	for _, img := range images {
@@ -234,22 +222,16 @@ func acceptPost(backend Backend, c *gin.Context) {
 		imagecidrs = append(imagecidrs, cidr)
 	}
 
-	var simplePost simplePost
-	c.Bind(&simplePost)
-	if simplePost.Post == "" {
-		log.Printf("form: %v", c.Request.Form)
-		errorPage(fmt.Errorf("Empty post"), c)
-		return
-	}
+	posttext := form.Value["post"][0]
 
-	cid, err := AddString(backend, simplePost.Post)
+	cid, err := AddString(backend, posttext)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
 
 	post := Post{
-		Previous: me.LastPost,
+		Previous: poster.LastPost,
 		Content:  cid,
 		Created:  time.Now().UTC(),
 		Images:   imagecidrs,
@@ -259,11 +241,13 @@ func acceptPost(backend Backend, c *gin.Context) {
 		errorPage(err, c)
 		return
 	}
-	me.LastPost = postcidr
-	backend.SaveUserCid(me) //ignoring erros for now
-
-	//redirect to a signing page. Eventually ajax
-	c.Redirect(http.StatusFound, "/user/"+simpleUser.Id)
+	poster.LastPost = postcidr
+	posterrecord, err := backend.SaveUserCid(poster) //ignoring erros for now
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+	c.JSON(200, posterrecord)
 }
 
 type simpleFollow struct {

@@ -155,28 +155,25 @@ func AddString(backend Backend, content string) (string, error) {
 const ipnsprefix = "/ipns/"
 
 //so a user id could be ens/dns/or ethereum public key
-func (b *IpfsBackend) GetUserById(usercid string) (User, error) {
+func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 
 	//todo resolve ens address https://github.com/wealdtech/go-ens and infura
 	//but to start use ResolveEthLink/https://eth.link/
 
-	link, err := dnslink.Resolve(usercid)
+	link, err := dnslink.Resolve(userid)
 	if err != nil && strings.HasPrefix(link, ipnsprefix) {
-		usercid = link[len(ipnsprefix):]
+		userid = link[len(ipnsprefix):]
 	}
 
 	var user User
-	usercid, err = b.shell.Resolve(usercid)
-	if err != nil {
-		log.Printf("failed to resolve %s", usercid)
-		if strings.Contains(err.Error(), "could not resolve name") {
-			return user, nil //bad idea. too late!
-		}
-		return user, fmt.Errorf("can't resolve cid: %w", err)
-
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	userrecord, found := b.records[userid]
+	if !found {
+		return user, nil //bad idea. too late!
 	}
-	err = b.readJson(usercid, &user)
-	log.Printf("got user %s/%s", user.PublicName, usercid)
+	err = b.readJson(userrecord.CID, &user)
+	log.Printf("got user %s/%s", user.PublicName, userrecord.CID)
 	return user, err
 }
 
