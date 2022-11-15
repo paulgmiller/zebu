@@ -50,9 +50,14 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 	}
 
 	backend := &IpfsBackend{
-		shell: shell,
+		shell:   shell,
+		records: map[string]UserNameRecord{},
 	}
 
+	log.Print("loading records")
+	backend.loadRecords(ctx)
+
+	log.Print("loading records")
 	//TODO need a way to communicate failures back
 	if err := backend.listen(ctx); err != nil {
 		log.Fatalf("coudlnt set up listener, %s", err)
@@ -60,7 +65,18 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 	return backend
 }
 
-const centraltopic = "zebu"
+const centraltopic = "/zebu"
+
+/* This is basically reimplmenting ipns on top of pubsub
+https://github.com/ipfs/specs/blob/main/ipns/IPNS_PUBSUB.md#layering-persistence-onto-libp2p-pubsub
+we could dig down into the dht directly.
+DEPRECATED SUBCOMMANDS
+  ipfs dht findpeer <peerID>...   - Find the multiaddresses associated with a Peer ID.
+  ipfs dht findprovs <key>...     - Find peers that can provide a specific value, given a key.
+  ipfs dht get <key>...           - Given a key, query the routing system for its best value.
+  ipfs dht provide <key>...       - Announce to the network that you are providing given values.
+  ipfs dht put <key> <value-file> - Write a key/value pair to the routing system.
+*/
 
 func (b *IpfsBackend) listen(ctx context.Context) error {
 	sub, err := b.shell.PubSubSubscribe(centraltopic)
@@ -91,17 +107,47 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 				continue
 			}
 
+			log.Printf("Got update about %s", unr.PubKey)
+
 			b.lock.RLock()
 			defer b.lock.RUnlock()
 			existing := b.records[unr.PubKey]
 			if unr.Sequence > existing.Sequence {
 				b.lock.Lock()
+				defer b.lock.Unlock()
 				b.records[unr.PubKey] = *unr
-				b.lock.Unlock()
+				usertopic := centraltopic + "/" + string(unr.PubKey)
+				if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data)); err != nil {
+					log.Printf("failed to save %s", unr.PubKey)
+				}
 			}
+
 		}
 	}()
 	return nil
+}
+
+func (b *IpfsBackend) loadRecords(ctx context.Context) {
+	if err := b.shell.FilesMkdir(ctx, centraltopic); err != nil {
+		if !strings.Contains(err.Error(), "file already exists") {
+			log.Fatalf("count't init user storage: %s", err)
+		}
+	}
+
+	users, err := b.shell.FilesLs(ctx, centraltopic)
+	if err != nil {
+		log.Fatalf("could't list user storage: %s", err)
+	}
+	log.Printf("got %d users", len(users))
+	//b.lock.Lock()
+	//defer b.lock.Unlock()
+	for _, u := range users {
+		var unr UserNameRecord
+		if err := b.readJson(u.Hash, &unr); err != nil {
+			log.Printf("couldn't read %s", u.Name)
+		}
+		b.records[unr.PubKey] = unr
+	}
 }
 
 func (b *IpfsBackend) readJson(cid string, obj interface{}) error {
@@ -199,24 +245,31 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 	}
 	ujson := string(ujsonbytes)
 	{
+		log.Printf("looking up user")
 		b.lock.RLock()
-		defer b.lock.RLock()
+		defer b.lock.RUnlock()
 		old, found := b.records[u.PubKey]
 		if found && old.Sequence > u.Sequence {
 			return fmt.Errorf("found newer record with sequence %d", old.Sequence)
 		}
-		b.lock.Lock()
-		defer b.lock.Lock()
+		log.Printf("saving user")
+		//some sort of dead lock
+		//b.lock.Lock()
+		//defer b.lock.Unlock()
 		b.records[u.PubKey] = u
+
 	}
+	usertopic := centraltopic + "/" + string(u.PubKey)
+	b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes))
 
 	//so to start with we'll publish everythig to one path to make everthing findable. Eventually that will explode
-	if err := b.shell.PubSubPublish("/zebu", ujson); err != nil {
+	if err := b.shell.PubSubPublish(centraltopic, ujson); err != nil {
 		return err
 	}
-	if b.shell.PubSubPublish("/zebu/"+string(u.PubKey), ujson); err != nil {
+	if b.shell.PubSubPublish(usertopic, ujson); err != nil {
 		return err
 	}
+
 	return nil
 }
 

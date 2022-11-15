@@ -60,19 +60,8 @@
 			console.log(data)
 			response = await fetch("/sign", { method: "POST", body: JSON.stringify(data)}  )
 			console.log(response)
+			location.reload()
 		}
-		/*
-		const sign = async (e) => {
-			e.preventDefault()
-			if (account) {
-			var messageBox = document.getElementById('message')
-			var signature = await w3.eth.personal.sign(messageBox.value, account)
-			document.getElementById('signature-container').innerHTML = "<div>Signature:</div><textarea id='signature-textarea' class='form-control' disabled>" + signature + "</textarea>";
-			} else {
-			alert('Please connect Metamask first')
-			}
-			return false;
-		}*/
     </script>
 	</body>
 </html>

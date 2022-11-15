@@ -114,6 +114,26 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 			})
 		}
 	}
+	mine, err := backend.GetPosts(me, 1)
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+	if len(mine) > 0 {
+		p := mine[0]
+		content, err := backend.Cat(p.Content)
+		if err != nil {
+			errorPage(err, c)
+			return
+		}
+		followedposts = append(followedposts, FetchedPost{
+			Post:             p,
+			RenderedContent:  template.HTML(content),
+			Author:           me.DisplayName,
+			AuthorPublicName: me.PublicName,
+		})
+	}
+
 	//users could lie abotu time but trust for now
 	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
 	c.HTML(http.StatusOK, "user.tmpl", gin.H{
@@ -192,6 +212,7 @@ func sign(backend Backend, c *gin.Context) {
 		errorPage(err, c)
 		return
 	}
+	log.Printf("signing unr %s", unr.PubKey)
 	err = backend.PublishUser(unr)
 	if err != nil {
 		errorPage(err, c)
