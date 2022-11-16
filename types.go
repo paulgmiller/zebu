@@ -1,13 +1,14 @@
 package main
 
 import (
-	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
 	"time"
 
+	"github.com/storyicon/sigverify"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -18,13 +19,13 @@ import (
 type UserNameRecord struct {
 	CID       string
 	Sequence  uint64
-	Signature []byte `json:"Signature,omitempty"`
+	Signature string `json:"Signature,omitempty"`
 	PubKey    string //should we use bytes?
 }
 
 func (unr UserNameRecord) Validate() bool {
 	clone := unr
-	clone.Signature = []byte{}
+	clone.Signature = ""
 
 	data, err := json.Marshal(clone)
 	if err != nil {
@@ -32,7 +33,9 @@ func (unr UserNameRecord) Validate() bool {
 		return false
 	}
 
-	//TODO validate signature.
+	//{"CID":"Qmf7u5D4xAiAALdBTaFhsmU29PycWgZrZStV4Sv83n4icQ","Sequence":1,"PubKey":"0xCbd6073f486714E6641bf87c22A9CEc25aCf5804"}
+	//{"CID":"QmYpdmbS3m677XLjixE6YkeMxCcnAvxmksWiubK4pigiFw","Sequence":1,"PubKey":"0xCbd6073f486714E6641bf87c22A9CEc25aCf5804"}
+	log.Printf("Verfiying: %s", data)
 	//https://github.com/ethereum/go-ethereum/blob/b628d7276624c2d8ea7dd97d2259a2c2fce7d3cc/accounts/accounts.go#L197
 	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), string(data))
 	keccak256 := sha3.NewLegacyKeccak256()
@@ -40,7 +43,24 @@ func (unr UserNameRecord) Validate() bool {
 		log.Printf("couldn't hash unr %s", err)
 		return false
 	}
-	return bytes.Equal(keccak256.Sum(nil), unr.Signature)
+	//https://ethereum.stackexchange.com/questions/45580/validating-go-ethereum-key-signature-with-ecrecover
+	//https://github.com/storyicon/sigverify
+	//https://github.com/ethereum/go-ethereum/blob/1c737e8b6da2b14111f8224ef3f385b1fe0cd8b9/crypto/signature_cgo.go#L32
+	hash := keccak256.Sum(nil)
+
+	sigbytes, err := hex.DecodeString(unr.Signature[2:])
+	if err != nil {
+		log.Printf("sig wasn't hex %s", err)
+		return false
+	}
+	addr, err := sigverify.EcRecover(hash, sigbytes)
+	if err != nil {
+		log.Printf("got error recovrge addr %s", err)
+		return false
+	}
+	//this is still wrong recovered 0xF2Fafe8D71E17D9d197D496d29AcF4bbBd066eC4 known addr 0xCbd6073f486714E6641bf87c22A9CEc25aCf5804
+	log.Printf("recovered %s known addr %s", addr.Hex(), unr.PubKey)
+	return addr.Hex() == unr.PubKey
 
 }
 

@@ -16,6 +16,7 @@ import (
 
 func serve(backend Backend) {
 	router := gin.Default()
+
 	//https://gin-gonic.com/docs/examples/bind-single-binary-with-template/
 	t, err := loadTemplates()
 	if err != nil {

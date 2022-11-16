@@ -114,8 +114,8 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 			existing := b.records[unr.PubKey]
 			if unr.Sequence > existing.Sequence {
 				b.lock.Lock()
-				defer b.lock.Unlock()
 				b.records[unr.PubKey] = *unr
+				b.lock.Unlock()
 				usertopic := centraltopic + "/" + string(unr.PubKey)
 				if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data)); err != nil {
 					log.Printf("failed to save %s", unr.PubKey)
@@ -139,8 +139,8 @@ func (b *IpfsBackend) loadRecords(ctx context.Context) {
 		log.Fatalf("could't list user storage: %s", err)
 	}
 	log.Printf("got %d users", len(users))
-	//b.lock.Lock()
-	//defer b.lock.Unlock()
+	b.lock.Lock()
+	defer b.lock.Unlock()
 	for _, u := range users {
 		var unr UserNameRecord
 		if err := b.readJson(u.Hash, &unr); err != nil {
@@ -245,19 +245,14 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 	}
 	ujson := string(ujsonbytes)
 	{
-		log.Printf("looking up user")
-		b.lock.RLock()
-		defer b.lock.RUnlock()
+		b.lock.Lock()
+		defer b.lock.Unlock()
 		old, found := b.records[u.PubKey]
 		if found && old.Sequence > u.Sequence {
 			return fmt.Errorf("found newer record with sequence %d", old.Sequence)
 		}
-		log.Printf("saving user")
 		//some sort of dead lock
-		//b.lock.Lock()
-		//defer b.lock.Unlock()
 		b.records[u.PubKey] = u
-
 	}
 	usertopic := centraltopic + "/" + string(u.PubKey)
 	b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes))
