@@ -108,20 +108,20 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 			}
 
 			log.Printf("Got update about %s", unr.PubKey)
-
-			b.lock.RLock()
-			defer b.lock.RUnlock()
-			existing := b.records[unr.PubKey]
-			if unr.Sequence > existing.Sequence {
+			func() {
 				b.lock.Lock()
-				b.records[unr.PubKey] = *unr
-				b.lock.Unlock()
-				usertopic := centraltopic + "/" + string(unr.PubKey)
-				if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data)); err != nil {
-					log.Printf("failed to save %s", unr.PubKey)
+				defer b.lock.Unlock()
+				existing := b.records[unr.PubKey]
+				if unr.Sequence > existing.Sequence {
+					log.Printf("update is new %s", unr.PubKey)
+					b.records[unr.PubKey] = *unr
+					usertopic := centraltopic + "/" + string(unr.PubKey)
+					if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data)); err != nil {
+						log.Printf("failed to save %s", unr.PubKey)
+					}
+					log.Printf("wrote to %s", usertopic)
 				}
-			}
-
+			}()
 		}
 	}()
 	return nil
@@ -255,8 +255,11 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 		b.records[u.PubKey] = u
 	}
 	usertopic := centraltopic + "/" + string(u.PubKey)
-	b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes))
-
+	if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes)); err != nil {
+		log.Printf("failed to write to %s, %s", usertopic, err)
+		return err
+	}
+	log.Printf("wrote to %s", usertopic)
 	//so to start with we'll publish everythig to one path to make everthing findable. Eventually that will explode
 	if err := b.shell.PubSubPublish(centraltopic, ujson); err != nil {
 		return err
