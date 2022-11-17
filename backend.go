@@ -36,7 +36,7 @@ type IpfsBackend struct {
 	//content
 	shell *ipfs.Shell
 
-	//pubsub
+	//pubsub caching layer.
 	lock    sync.RWMutex
 	records map[string]UserNameRecord
 }
@@ -116,7 +116,7 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 					log.Printf("update is new %s", unr.PubKey)
 					b.records[unr.PubKey] = *unr
 					usertopic := centraltopic + "/" + string(unr.PubKey)
-					if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data)); err != nil {
+					if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
 						log.Printf("failed to save %s", unr.PubKey)
 					}
 					log.Printf("wrote to %s", usertopic)
@@ -128,13 +128,12 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 }
 
 func (b *IpfsBackend) loadRecords(ctx context.Context) {
-	if err := b.shell.FilesMkdir(ctx, centraltopic); err != nil {
-		if !strings.Contains(err.Error(), "file already exists") {
-			log.Fatalf("count't init user storage: %s", err)
-		}
+
+	if err := b.shell.FilesMkdir(ctx, centraltopic, ipfs.FilesMkdir.Parents(true)); err != nil {
+		log.Fatalf("count't init user storage: %s", err)
 	}
 
-	users, err := b.shell.FilesLs(ctx, centraltopic)
+	users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
 	if err != nil {
 		log.Fatalf("could't list user storage: %s", err)
 	}
@@ -144,7 +143,7 @@ func (b *IpfsBackend) loadRecords(ctx context.Context) {
 	for _, u := range users {
 		var unr UserNameRecord
 		if err := b.readJson(u.Hash, &unr); err != nil {
-			log.Printf("couldn't read %s", u.Name)
+			log.Printf("couldn't read %s: %s", u.Name, u.Hash)
 		}
 		b.records[unr.PubKey] = unr
 	}
@@ -255,7 +254,8 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 		b.records[u.PubKey] = u
 	}
 	usertopic := centraltopic + "/" + string(u.PubKey)
-	if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes)); err != nil {
+
+	if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
 		log.Printf("failed to write to %s, %s", usertopic, err)
 		return err
 	}
