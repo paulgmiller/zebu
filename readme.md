@@ -24,5 +24,14 @@ https://discuss.ens.domains/t/layer-2-scaling-and-subdomains/6286/10
 https://github.com/ensdomains/ens-contracts/tree/master/contracts/wrapper
 
 ## TODO 
-better image redndering.
+### better image galleries.
 https://galleriajs.github.io/themes/
+https://www.liwen.id.au/heg/
+
+### Embend ipfs or containerize
+
+### run it on a cluster. 
+
+### protect against spam. 
+
+### shove on fly.io or aks cluster.

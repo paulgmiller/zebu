@@ -41,3 +41,17 @@ func TestUNRValdiate(t *testing.T) {
 	}
 
 }
+
+func TestUNRValdiate2(t *testing.T) {
+	unr := UserNameRecord{
+		CID:       "Qmct7qVHMMpdsxmSsrY3ginXY3PAVYaZcpeA3UX8WXYw1q",
+		Sequence:  6,
+		Signature: "0x7da83c9cfd046464a95c1d970410069edd8ba483dc19e40c39497a7b6ee4012d29ce77165580ad7fd0aab7f714699328d9b4b1846d724e1319ee407e23ea832e1c",
+		PubKey:    "0xCbd6073f486714E6641bf87c22A9CEc25aCf5804",
+	}
+
+	if !unr.Validate() {
+		t.Fatalf("didn't validate")
+	}
+
+}

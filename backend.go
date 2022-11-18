@@ -10,6 +10,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ipfs/go-dnslink"
 	ipfs "github.com/ipfs/go-ipfs-api"
@@ -56,6 +57,7 @@ func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 
 	log.Print("loading records")
 	backend.loadRecords(ctx)
+	backend.republishRecords(ctx)
 
 	log.Print("loading records")
 	//TODO need a way to communicate failures back
@@ -107,7 +109,6 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 				continue
 			}
 
-			log.Printf("Got update about %s", unr.PubKey)
 			func() {
 				b.lock.Lock()
 				defer b.lock.Unlock()
@@ -125,6 +126,40 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 		}
 	}()
 	return nil
+}
+
+func (b *IpfsBackend) republishRecords(ctx context.Context) {
+
+	go func() {
+		for {
+			if ctx.Err() != nil {
+				break
+			}
+
+			users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
+			if err != nil {
+				log.Fatalf("could't list user storage: %s", err)
+			}
+			for _, u := range users {
+
+				json, err := b.Cat(u.Hash)
+				if err != nil {
+					log.Printf("couldn't read %s: %s", u.Name, u.Hash)
+				}
+
+				usertopic := centraltopic + "/" + u.Name
+
+				//so to start with we'll publish everythig to one path to make everthing findable. Eventually that will explode
+				if err := b.shell.PubSubPublish(centraltopic, json); err != nil {
+					log.Printf("failed to publish to %s, %s", usertopic, err)
+				}
+				if b.shell.PubSubPublish(usertopic, json); err != nil {
+					log.Printf("failed to publish to %s, %s", usertopic, err)
+				}
+			}
+			time.Sleep(10 * time.Second) //is this impolite
+		}
+	}()
 }
 
 func (b *IpfsBackend) loadRecords(ctx context.Context) {
@@ -234,10 +269,15 @@ func (b *IpfsBackend) SaveUserCid(user User) (UserNameRecord, error) {
 	existing.Sequence += 1
 	existing.PubKey = user.PublicName //just in case there was no existing
 	existing.CID = cid
+	existing.Signature = "" //no longer valid
 	return existing, nil
 }
 
 func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
+	if !u.Validate() {
+		return fmt.Errorf("Invalid user %v", u)
+	}
+
 	ujsonbytes, err := json.Marshal(u)
 	if err != nil {
 		return err
@@ -253,7 +293,7 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 		//some sort of dead lock
 		b.records[u.PubKey] = u
 	}
-	usertopic := centraltopic + "/" + string(u.PubKey)
+	usertopic := centraltopic + "/" + u.PubKey
 
 	if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
 		log.Printf("failed to write to %s, %s", usertopic, err)

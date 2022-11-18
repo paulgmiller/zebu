@@ -53,6 +53,7 @@
 			var response = await fetch("post", { method: "POST", body: formData}  )
 			var r2 = response.clone()
 			var data = await response.json()
+			//error if data already has signature?
 			var rawjson = await r2.text()
 			console.log("rawjson: " + rawjson)
 			var signature = await w3.eth.personal.sign(rawjson, account)

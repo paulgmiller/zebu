@@ -33,7 +33,7 @@ func (unr UserNameRecord) Validate() bool {
 
 	//{"CID":"Qmf7u5D4xAiAALdBTaFhsmU29PycWgZrZStV4Sv83n4icQ","Sequence":1,"PubKey":"0xCbd6073f486714E6641bf87c22A9CEc25aCf5804"}
 	//{"CID":"QmYpdmbS3m677XLjixE6YkeMxCcnAvxmksWiubK4pigiFw","Sequence":1,"PubKey":"0xCbd6073f486714E6641bf87c22A9CEc25aCf5804"}
-	log.Printf("Verfiying: %s", data)
+	//log.Printf("Verfiying: %s", data)
 	//https://github.com/ethereum/go-ethereum/blob/b628d7276624c2d8ea7dd97d2259a2c2fce7d3cc/accounts/accounts.go#L197
 
 	//https://ethereum.stackexchange.com/questions/45580/validating-go-ethereum-key-signature-with-ecrecover
@@ -51,7 +51,7 @@ func (unr UserNameRecord) Validate() bool {
 		return false
 	}
 	//this is still wrong recovered 0xF2Fafe8D71E17D9d197D496d29AcF4bbBd066eC4 known addr 0xCbd6073f486714E6641bf87c22A9CEc25aCf5804
-	log.Printf("recovered %s known addr %s", addr.Hex(), unr.PubKey)
+	//log.Printf("recovered %s known addr %s", addr.Hex(), unr.PubKey)
 	return addr.Hex() == unr.PubKey
 
 }
