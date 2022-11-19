@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/pkg/errors"
 )
 
 func serve(backend Backend) {
@@ -285,40 +284,27 @@ func acceptPost(backend Backend, c *gin.Context) {
 	c.JSON(200, posterrecord)
 }
 
-type simpleFollow struct {
-	Followee string `form:"followee"` //ipns?
-}
-
 func acceptFollow(backend Backend, c *gin.Context) {
-	var simpleUser simpleuser
-	if err := c.ShouldBindUri(&simpleUser); err != nil {
-		errorPage(err, c)
-		return
+	account, faccount := c.GetPostForm("account")
+	followee, ff := c.GetPostForm("followee")
+	if !ff && !faccount {
+		errorPage(fmt.Errorf("need account and followee"), c)
 	}
 
-	if simpleUser.Id == "" {
-		//this didn't work
-		errorPage(fmt.Errorf("no user supplied"), c)
-		return
-	}
-
-	user, err := backend.GetUserById(simpleUser.Id)
+	user, err := backend.GetUserById(account)
 	if err != nil {
 		errorPage(err, c)
 	}
 
-	var simpleFollow simpleFollow
-	c.Bind(&simpleFollow)
-	_, err = backend.GetUserById(simpleFollow.Followee)
+	user.Follow(followee)
+	followrecord, err := backend.SaveUserCid(user)
 	if err != nil {
-		errorPage(errors.Wrap(err, "couldn't resolve followee"), c)
+		errorPage(err, c)
 	}
 
-	user.Follow(simpleFollow.Followee)
-	backend.SaveUserCid(user)
-
-	//redirect to a signing page. Eventually ajax
-	c.Redirect(http.StatusFound, "/user/"+simpleFollow.Followee)
+	jsonrecord, _ := json.Marshal(followrecord)
+	log.Printf("returning %s", jsonrecord)
+	c.JSON(200, followrecord)
 }
 
 type simpleRegister struct {

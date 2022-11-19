@@ -30,6 +30,9 @@ https://www.liwen.id.au/heg/
 
 ### Embend ipfs or containerize
 
+### ENS integration
+https://github.com/web3/web3.js/issues/2683
+
 ### run it on a cluster. 
 
 ### protect against spam. 

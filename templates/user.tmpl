@@ -22,13 +22,11 @@
 			<br/>
 			<input type="submit" value="Submit">
 		</form >
-		<!--
-		<form action="/follow" method="post">
+		<form action="follow(event)" >
 			<textarea name="followee" rows="2" cols="64"></textarea>
 			<br/>
 			<input type="submit" value="Follow">
 		</form>
-		-->
 		<div name="output" ></div>
 		<br/>
 		{{range .Posts}}
@@ -43,17 +41,34 @@
         {{end}}
 		<!-- credit view-source:https://shobhitic.github.io/ethsign/ -->
 		<script type="text/javascript">
+		var account = "{{ .UserId }}"
+		window.w3 = new Web3(window.ethereum)
 		const savepost = async (event) => {
-			window.w3 = new Web3(window.ethereum)
 			event.preventDefault()
 			var formData = new FormData(event.target)
-			var account = "{{ .UserId }}"
 			formData.append("account", account)
 			console.log(formData)
 			var response = await fetch("post", { method: "POST", body: formData}  )
 			var r2 = response.clone()
 			var data = await response.json()
 			//error if data already has signature?
+			var rawjson = await r2.text()
+			console.log("rawjson: " + rawjson)
+			var signature = await w3.eth.personal.sign(rawjson, account)
+			data.Signature = signature
+			console.log(data)
+			response = await fetch("/sign", { method: "POST", body: JSON.stringify(data)}  )
+			console.log(response)
+			location.reload()
+		}
+		const follow = async (event) => {
+			event.preventDefault()
+			var formData = new FormData(event.target)
+			formData.append("account", account)
+			console.log(formData)
+			var response = await fetch("follow", { method: "POST", body: formData}  )
+			var r2 = response.clone()
+			var data = await response.json()
 			var rawjson = await r2.text()
 			console.log("rawjson: " + rawjson)
 			var signature = await w3.eth.personal.sign(rawjson, account)
