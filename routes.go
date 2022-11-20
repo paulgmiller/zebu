@@ -63,6 +63,7 @@ func serve(backend Backend) {
 
 		c.DataFromReader(http.StatusOK, int64(buf.Len()), "image/*", buf, map[string]string{})
 	})
+
 	log.Print(router.Run(":9000").Error())
 }
 

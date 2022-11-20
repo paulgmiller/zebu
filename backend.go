@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -44,8 +45,13 @@ type IpfsBackend struct {
 
 func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
 
+	ipfsserver, found := os.LookupEnv("IPFS_SERVER")
+	if !found {
+		ipfsserver = "localhost:5001"
+	}
+
 	//https: //github.com/ipfs/kubo/tree/master/docs/examples/kubo-as-a-library
-	shell := ipfs.NewShell("localhost:5001")
+	shell := ipfs.NewShell(ipfsserver)
 	if !shell.IsUp() {
 		log.Fatal("Ipfs not fond on localhost:5001 please install https://docs.ipfs.io/install/command-line/#official-distributions")
 	}
@@ -239,7 +245,7 @@ const ipnsprefix = "/ipns/"
 func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 
 	//todo resolve ens address https://github.com/wealdtech/go-ens and infura
-	//but to start use ResolveEthLink/https://eth.link/
+	//but to start use ResolveEthLink/ https://eth.link/
 
 	link, err := dnslink.Resolve(userid)
 	if err != nil && strings.HasPrefix(link, ipnsprefix) {

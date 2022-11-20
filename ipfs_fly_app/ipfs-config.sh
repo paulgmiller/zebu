@@ -32,3 +32,6 @@ ipfs config Addresses.API --json '["/ip4/0.0.0.0/tcp/5001", "/ip6/::/tcp/5001"]'
 # echo "ipfs-config: setting Addresses.AppendAnnounce config"
 # TODO: Enable this line with the IPv4 of the 
 ipfs config --json Addresses.AppendAnnounce '["/ip4/149.248.198.147/tcp/4001"]'
+
+#turn on pubsub.
+ipfs config --json Ipns.UsePubsub true

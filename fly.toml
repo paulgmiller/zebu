@@ -10,7 +10,8 @@ processes = []
   buildpacks = ["gcr.io/paketo-buildpacks/go"]
 
 [env]
-  PORT = "8080"
+  PORT = "9000"
+  IPFS_SERVER = "zipfs.internal:5001"
 
 [experimental]
   allowed_public_ports = []
@@ -18,7 +19,7 @@ processes = []
 
 [[services]]
   http_checks = []
-  internal_port = 8080
+  internal_port = 9000
   processes = ["app"]
   protocol = "tcp"
   script_checks = []
