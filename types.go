@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	"strings"
@@ -73,6 +75,23 @@ func (unr UserNameRecord) Validate() bool {
 
 	return addr.Hex() == unr.PubKey
 
+}
+
+func (unr *UserNameRecord) Sign(privatekey *ecdsa.PrivateKey) error {
+	junr, err := json.Marshal(unr)
+	if err != nil {
+		return fmt.Errorf("could not marshal %v, %w", unr, err)
+	}
+
+	sig, err := crypto.Sign(accounts.TextHash(junr), privatekey)
+	if err != nil {
+		return fmt.Errorf("could not sign  %s, %w", junr, err)
+	}
+
+	//magic see github.com/ethereum/go-ethereum@v1.10.20/signer/core/signed_data.go
+	sig[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+	unr.Signature = hex.EncodeToString(sig)
+	return nil
 }
 
 type User struct {

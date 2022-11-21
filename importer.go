@@ -7,7 +7,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/url"
@@ -15,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/araddon/dateparse"
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gilliek/go-opml/opml"
 	"github.com/mmcdole/gofeed"
@@ -103,19 +101,11 @@ func publishWithKey(author User, b UserBackend, privatekey *ecdsa.PrivateKey) er
 	if err != nil {
 		return fmt.Errorf("could not save %v, %w", author, err)
 	}
-	junr, err := json.Marshal(unr)
-	if err != nil {
-		return fmt.Errorf("could not marshal %v, %w", unr, err)
+
+	if err := unr.Sign(privatekey); err != nil {
+		return err
 	}
 
-	sig, err := crypto.Sign(accounts.TextHash(junr), privatekey)
-	if err != nil {
-		return fmt.Errorf("could not sign  %s, %w", junr, err)
-	}
-
-	//magic see github.com/ethereum/go-ethereum@v1.10.20/signer/core/signed_data.go
-	sig[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
-	unr.Signature = hex.EncodeToString(sig)
 	if !unr.Validate() {
 		return fmt.Errorf("coul not validate  %v", unr)
 	}
