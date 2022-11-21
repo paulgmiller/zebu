@@ -111,6 +111,9 @@ func publishWithKey(author User, b UserBackend, privatekey *ecdsa.PrivateKey) er
 		return fmt.Errorf("couln't sign  %s, %w", junr, err)
 	}
 	unr.Signature = hex.EncodeToString(sig)
+	if !unr.Validate() {
+		return fmt.Errorf("couln't sign  %v", unr)
+	}
 	err = b.PublishUser(unr)
 	if err != nil {
 		return fmt.Errorf("couln't publish %v, %w", unr, err)

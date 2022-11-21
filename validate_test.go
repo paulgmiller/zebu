@@ -43,10 +43,14 @@ func TestUNRValdiate(t *testing.T) {
 }
 
 func TestUNRValdiate2(t *testing.T) {
+	//{"CID":"Qmd8fBSQeJ2MNkALQiLCFihymSAM4o7i13VnEJSAofAZWb",
+	//"Sequence":6,
+	//"Signature":"0x59657ed9783c2fcce688c93b2f3a2196ce7fd07b2e2cca52c3a1bcde97db68136353d83304a27d0fd4824bbedcc75834e191034ba1d6b409d4e2f3c5e742f0051b",
+	//"PubKey":"0xCbd6073f486714E6641bf87c22A9CEc25aCf5804"
 	unr := UserNameRecord{
-		CID:       "Qmct7qVHMMpdsxmSsrY3ginXY3PAVYaZcpeA3UX8WXYw1q",
+		CID:       "Qmd8fBSQeJ2MNkALQiLCFihymSAM4o7i13VnEJSAofAZWb",
 		Sequence:  6,
-		Signature: "0x7da83c9cfd046464a95c1d970410069edd8ba483dc19e40c39497a7b6ee4012d29ce77165580ad7fd0aab7f714699328d9b4b1846d724e1319ee407e23ea832e1c",
+		Signature: "0x59657ed9783c2fcce688c93b2f3a2196ce7fd07b2e2cca52c3a1bcde97db68136353d83304a27d0fd4824bbedcc75834e191034ba1d6b409d4e2f3c5e742f0051b",
 		PubKey:    "0xCbd6073f486714E6641bf87c22A9CEc25aCf5804",
 	}
 
