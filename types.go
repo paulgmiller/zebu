@@ -70,9 +70,7 @@ func (unr UserNameRecord) Validate() bool {
 		return false
 	}
 	addr := crypto.PubkeyToAddress(*pubkey)
-	//this is still wrong recovered 0xF2Fafe8D71E17D9d197D496d29AcF4bbBd066eC4 known addr 0xCbd6073f486714E6641bf87c22A9CEc25aCf5804
-	log.Printf("recovered %s known addr %s", addr.Hex(), unr.PubKey)
-
+	//log.Printf("recovered %s known addr %s", addr.Hex(), unr.PubKey)
 	return addr.Hex() == unr.PubKey
 
 }

@@ -72,7 +72,7 @@ func TestSigning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	unr := &UserNameRecord{
+	unr := UserNameRecord{
 		CID:      "Qmd8fBSQeJ2MNkALQiLCFihymSAM4o7i13VnEJSAofAZWb",
 		Sequence: 6,
 		PubKey:   crypto.PubkeyToAddress(key.PublicKey).Hex(),

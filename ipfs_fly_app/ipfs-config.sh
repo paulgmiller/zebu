@@ -35,3 +35,7 @@ ipfs config --json Addresses.AppendAnnounce '["/ip4/149.248.198.147/tcp/4001"]'
 
 #turn on pubsub.
 ipfs config --json Ipns.UsePubsub true
+
+#use fly-global-services https://fly.io/docs/app-guides/udp-and-tcp/#udp-must-listen-on-the-same-port-externally-and-internally
+#but didn't parse
+#ipfs config --json Addresses.Swarm '["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001", "/ip4/fly-global-services/udp/4001/quic","/ip6/::/udp/4001/quic"]'

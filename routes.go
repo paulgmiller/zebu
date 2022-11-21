@@ -24,8 +24,10 @@ func serve(backend Backend) {
 	router.SetHTMLTemplate(t)
 	router.GET("/", func(c *gin.Context) {
 		account, err := c.Cookie("zebu_account")
+		log.Printf("got cookie %s", account)
 		if err == http.ErrNoCookie {
 			home(backend, c)
+			return
 		}
 		userfeed(backend, c, account)
 	})
@@ -83,12 +85,6 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 		errorPage(err, c)
 		return
 	}
-
-	/*if me.PublicName == "" {
-		c.HTML(http.StatusOK, "register.tmpl", gin.H{})
-		return
-	}*/
-
 	var followedposts []FetchedPost
 	for _, follow := range me.Follows {
 		f, err := backend.GetUserById(follow)
@@ -134,7 +130,6 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 			AuthorPublicName: me.PublicName,
 		})
 	}
-
 	//users could lie abotu time but trust for now
 	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
 	c.HTML(http.StatusOK, "user.tmpl", gin.H{

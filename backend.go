@@ -69,7 +69,6 @@ func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 	backend.loadRecords(ctx)
 	backend.republishRecords(ctx)
 
-	log.Print("loading records")
 	//TODO need a way to communicate failures back
 	if err := backend.listen(ctx); err != nil {
 		log.Fatalf("coudlnt set up listener, %s", err)
@@ -250,12 +249,10 @@ func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 
 	//todo resolve ens address https://github.com/wealdtech/go-ens and infura
 	//but to start use ResolveEthLink/ https://eth.link/
-
 	link, err := dnslink.Resolve(userid)
 	if err != nil && strings.HasPrefix(link, ipnsprefix) {
 		userid = link[len(ipnsprefix):]
 	}
-
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 	userrecord, found := b.records[userid]
