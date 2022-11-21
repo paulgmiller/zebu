@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/storyicon/sigverify"
 )
 
@@ -63,4 +64,24 @@ func TestUNRValdiate2(t *testing.T) {
 		t.Fatalf("didn't validate 0x prefix")
 	}
 
+}
+
+func TestSigning(t *testing.T) {
+
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	unr := &UserNameRecord{
+		CID:      "Qmd8fBSQeJ2MNkALQiLCFihymSAM4o7i13VnEJSAofAZWb",
+		Sequence: 6,
+		PubKey:   crypto.PubkeyToAddress(key.PublicKey).Hex(),
+	}
+	unr.Sign(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !unr.Validate() {
+		t.Fatalf("failed to validate %v", unr)
+	}
 }
