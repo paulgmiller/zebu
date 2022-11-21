@@ -58,4 +58,9 @@ func TestUNRValdiate2(t *testing.T) {
 		t.Fatalf("didn't validate")
 	}
 
+	unr.Signature = "59657ed9783c2fcce688c93b2f3a2196ce7fd07b2e2cca52c3a1bcde97db68136353d83304a27d0fd4824bbedcc75834e191034ba1d6b409d4e2f3c5e742f0051b"
+	if !unr.Validate() {
+		t.Fatalf("didn't validate 0x prefix")
+	}
+
 }

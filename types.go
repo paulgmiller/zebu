@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/storyicon/sigverify"
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 //this is an ipns replacement so we can use ethereum signatures.
@@ -51,13 +52,25 @@ func (unr UserNameRecord) Validate() bool {
 		log.Printf("sig wasn't hex %s", err)
 		return false
 	}
-	addr, err := sigverify.EcRecover(data, sigbytes)
+
+	//this magic is in sigverify and signer/core/signed_data.go in go-ethereeum.
+	if sigbytes[64] != 27 && sigbytes[64] != 28 {
+		log.Printf("invalid Ethereum signature (V is not 27 or 28)")
+		return false
+	}
+	sigbytes[64] -= 27 // Transform yellow paper V from 27/28 to 0/1
+
+	pubkey, err := crypto.SigToPub(accounts.TextHash(data), sigbytes)
+
+	//pubkey, err := crypto.Ecrecover(accounts.TextHash(data), sigbytes)
 	if err != nil {
 		log.Printf("got error recovering addr %s", err)
 		return false
 	}
+	addr := crypto.PubkeyToAddress(*pubkey)
 	//this is still wrong recovered 0xF2Fafe8D71E17D9d197D496d29AcF4bbBd066eC4 known addr 0xCbd6073f486714E6641bf87c22A9CEc25aCf5804
 	log.Printf("recovered %s known addr %s", addr.Hex(), unr.PubKey)
+
 	return addr.Hex() == unr.PubKey
 
 }

@@ -213,7 +213,7 @@ func sign(backend UserBackend, c *gin.Context) {
 		errorPage(err, c)
 		return
 	}
-	log.Printf("signing unr %s", unr.PubKey)
+	log.Printf("signed unr %s", unr.PubKey)
 	err = backend.PublishUser(unr)
 	if err != nil {
 		errorPage(err, c)
