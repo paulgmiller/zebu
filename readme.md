@@ -33,8 +33,4 @@ https://www.liwen.id.au/heg/
 ### ENS integration
 https://github.com/web3/web3.js/issues/2683
 
-### run it on a cluster. 
-
 ### protect against spam. 
-
-### shove on fly.io or aks cluster.

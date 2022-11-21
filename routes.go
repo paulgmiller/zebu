@@ -206,7 +206,7 @@ func userPosts(backend Backend, user User, author string, c *gin.Context) {
 	})
 }
 
-func sign(backend Backend, c *gin.Context) {
+func sign(backend UserBackend, c *gin.Context) {
 	var unr UserNameRecord
 	err := c.BindJSON(&unr)
 	if err != nil {
@@ -285,7 +285,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 	c.JSON(200, posterrecord)
 }
 
-func acceptFollow(backend Backend, c *gin.Context) {
+func acceptFollow(backend UserBackend, c *gin.Context) {
 	account, faccount := c.GetPostForm("account")
 	followee, ff := c.GetPostForm("followee")
 	if !ff && !faccount {

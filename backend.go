@@ -19,13 +19,17 @@ import (
 
 type Backend interface {
 	ContentBackend
+	UserBackend
 }
 
-type ContentBackend interface {
+type UserBackend interface {
 	GetUserById(usercid string) (User, error)
 	PublishUser(UserNameRecord) error
 	//GetUserId() string
 	SaveUserCid(user User) (UserNameRecord, error)
+}
+
+type ContentBackend interface {
 	GetPosts(user User, count int) ([]Post, error)
 	SavePost(post Post) (string, error)
 	//too low level?
@@ -43,7 +47,7 @@ type IpfsBackend struct {
 	records map[string]UserNameRecord
 }
 
-func NewIpfsBackend(ctx context.Context, keyName string) *IpfsBackend {
+func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 
 	ipfsserver, found := os.LookupEnv("IPFS_SERVER")
 	if !found {
