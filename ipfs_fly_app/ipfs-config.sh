@@ -31,11 +31,11 @@ ipfs config Addresses.API --json '["/ip4/0.0.0.0/tcp/5001", "/ip6/::/tcp/5001"]'
 ## Note that it must be 1-1, you can't point at multiple go-ipfs nodes and expect it to work
 # echo "ipfs-config: setting Addresses.AppendAnnounce config"
 # TODO: Enable this line with the IPv4 of the 
-ipfs config --json Addresses.AppendAnnounce '["/ip4/149.248.198.147/tcp/4001"]'
+ipfs config --json Addresses.AppendAnnounce '["/ip4/149.248.198.147/tcp/4001", "/ip6/2a09:8280:1::6:a032/tcp/4001"]'
 
 #turn on pubsub.
 ipfs config --json Ipns.UsePubsub true
 
 #use fly-global-services https://fly.io/docs/app-guides/udp-and-tcp/#udp-must-listen-on-the-same-port-externally-and-internally
 #but didn't parse
-#ipfs config --json Addresses.Swarm '["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001", "/ip4/fly-global-services/udp/4001/quic","/ip6/::/udp/4001/quic"]'
+ipfs config --json Addresses.Swarm '["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic","/ip6/::/udp/4001/quic"]'
