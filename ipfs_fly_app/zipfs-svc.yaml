@@ -1,0 +1,2 @@
+NAME    TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
+zipfs   ClusterIP   10.0.230.57   <none>        5001/TCP   12s

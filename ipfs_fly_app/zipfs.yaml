@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: zipfs
+  name: zipfs
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: zipfs
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: zipfs
+    spec:
+      containers:
+      - image: paulgmiller/zipfs
+        imagePullPolicy: Always
+        name: zipfs
+        resources: {}
+        volumeMounts:
+        - name: ipfs-data
+          mountPath: /data/ipfs
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: ipfs-data
+        hostPath:
+          path: /data/ipfs
+          type: DirectoryOrCreate
+      
+          

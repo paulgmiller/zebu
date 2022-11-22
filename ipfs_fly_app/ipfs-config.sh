@@ -31,7 +31,7 @@ ipfs config Addresses.API --json '["/ip4/0.0.0.0/tcp/5001", "/ip6/::/tcp/5001"]'
 ## Note that it must be 1-1, you can't point at multiple go-ipfs nodes and expect it to work
 # echo "ipfs-config: setting Addresses.AppendAnnounce config"
 # TODO: Enable this line with the IPv4 of the 
-ipfs config --json Addresses.AppendAnnounce '["/ip4/149.248.198.147/tcp/4001", "/ip6/2a09:8280:1::6:a032/tcp/4001"]'
+ipfs config --json Addresses.AppendAnnounce '["/ip4/20.150.158.188/tcp/4001"]'
 
 #turn on pubsub.
 ipfs config --json Ipns.UsePubsub true

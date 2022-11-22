@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: "2022-11-22T22:00:03Z"
+  finalizers:
+  - service.kubernetes.io/load-balancer-cleanup
+  labels:
+    app: swarm
+  name: swarm
+  namespace: default
+  resourceVersion: "87394"
+  uid: c8d3a97f-053c-41c1-aca6-5844bf20fbcc
+spec:
+  allocateLoadBalancerNodePorts: true
+  clusterIP: 10.0.24.133
+  clusterIPs:
+  - 10.0.24.133
+  externalTrafficPolicy: Local
+  internalTrafficPolicy: Local
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: swarm-tcp
+    nodePort: 31879
+    port: 4001
+    protocol: TCP
+    targetPort: 4001
+  - name: swarm-udp
+    nodePort: 32738
+    port: 4002
+    protocol: TCP
+    targetPort: 4002
+  selector:
+    app: zipfs
+  sessionAffinity: None
+  type: LoadBalancer
+status:
+  loadBalancer:
+    ingress:
+    - ip: 20.150.158.188
