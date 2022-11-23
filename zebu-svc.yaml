@@ -1,17 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  creationTimestamp: "2022-11-22T22:29:34Z"
   finalizers:
   - service.kubernetes.io/load-balancer-cleanup
   labels:
     app: zebu
   name: zebu
   namespace: default
-  resourceVersion: "94087"
-  uid: c046aa7d-a393-4cbd-bbd5-95bf7964a1ea
 spec:
   allocateLoadBalancerNodePorts: true
+  loadBalancerIP: 20.150.158.188
   clusterIP: 10.0.193.46
   clusterIPs:
   - 10.0.193.46
@@ -30,7 +28,3 @@ spec:
     app: zebu
   sessionAffinity: None
   type: LoadBalancer
-status:
-  loadBalancer:
-    ingress:
-    - ip: 20.106.65.226
