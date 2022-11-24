@@ -20,6 +20,7 @@ import (
 type Backend interface {
 	ContentBackend
 	UserBackend
+	Healthz
 }
 
 type UserBackend interface {
@@ -27,6 +28,10 @@ type UserBackend interface {
 	PublishUser(UserNameRecord) error
 	//GetUserId() string
 	SaveUserCid(user User) (UserNameRecord, error)
+}
+
+type Healthz interface {
+	Healthz() bool
 }
 
 type ContentBackend interface {
@@ -74,6 +79,10 @@ func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 		log.Fatalf("coudlnt set up listener, %s", err)
 	}
 	return backend
+}
+
+func (b *IpfsBackend) Healthz() bool {
+	return b.shell.IsUp()
 }
 
 const centraltopic = "/zebu"

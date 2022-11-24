@@ -22,6 +22,16 @@ https://www.liwen.id.au/heg/
 
 ### Embend ipfs?
 
+## move to new ipfs api
+https://github.com/ipfs/go-ipfs-http-client
+gets us timeouts for not found
+
+## serve web3.js locally
+
+## resources and readiness probe
+
+
+
 ### ENS  and dns integration
 https://github.com/web3/web3.js/issues/2683
 let them register after connect
