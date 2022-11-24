@@ -14,7 +14,8 @@ import (
 )
 
 func serve(backend Backend) {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{"/healthz"}}), gin.Recovery())
 
 	//https://gin-gonic.com/docs/examples/bind-single-binary-with-template/
 	t, err := loadTemplates()
