@@ -1,22 +1,14 @@
 Distributerd social media/content posting.
+Evolved from this
+https://paulgmiller.github.io/2021/02/07/Distributed-Twitter.html
 
 
 ## People to follow.
 Still need to implment ENS. (dns txt entries might work? )
 paul miller k51qzi5uqu5dhy7ghgmb0tedml0hw453vqaqo7tt3pl1koprzfwkgpf0ag6icj
-Evolved from this
-https://paulgmiller.github.io/2021/02/07/Distributed-Twitter.html
 
 
 ## Releases
-```
-miller@millercloud:~/zebu$ go build -o bin/linux/zebu
-pmiller@millercloud:~/zebu$ ipfs add bin/linux/zebu 
-added QmPQa5XSJR3cXP2PaC4ux2L56gcdaV9KeuD3VH9byoP7rf zebu
-pmiller@millercloud:~/zebu$ GOOS=windows go build -o bin/windows/zebu 
-pmiller@millercloud:~/zebu$ ipfs add  bin/windows/zebu 
-added QmVFev3MJosBY2YQHrv7N3nTa1f2yCSg1YKWQ226YHgiGQ zebu
-```
 
 ## Related to ens l2
 https://eips.ethereum.org/EIPS/eip-3668
@@ -28,9 +20,25 @@ https://github.com/ensdomains/ens-contracts/tree/master/contracts/wrapper
 https://galleriajs.github.io/themes/
 https://www.liwen.id.au/heg/
 
-### Embend ipfs or containerize
+### Embend ipfs?
 
-### ENS integration
+### ENS  and dns integration
 https://github.com/web3/web3.js/issues/2683
+let them register after connect
+move north briton to k8s
 
 ### protect against spam. 
+
+## scale ipfs
+loadbalancer with different ports
+persistent volumes
+
+## run importer
+
+## e2e test.
+
+## better homepage
+
+## put it arm because fuck it
+
+## retweets and likes
