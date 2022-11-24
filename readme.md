@@ -28,6 +28,8 @@ gets us timeouts for not found
 
 ## serve web3.js locally
 
+## resources and readiness probe
+
 
 
 ### ENS  and dns integration
