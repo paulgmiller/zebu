@@ -39,6 +39,13 @@ func serve(backend Backend) {
 		sign(backend, c)
 	})
 
+	router.GET("/healthz", func(c *gin.Context) {
+		if !backend.Healthz() {
+			errorPage(fmt.Errorf("ipfs isn't up"), c)
+		}
+		c.Status(200)
+	})
+
 	router.POST("/follow", func(c *gin.Context) {
 		acceptFollow(backend, c)
 	})
