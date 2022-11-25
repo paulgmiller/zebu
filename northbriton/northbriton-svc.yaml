@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: "2022-11-25T04:31:27Z"
+  labels:
+    app: northbriton
+  name: northbriton
+  namespace: default
+  resourceVersion: "806326"
+  uid: 17884021-2f64-476d-b15e-cae927262c41
+spec:
+  clusterIP: 10.0.126.128
+  clusterIPs:
+  - 10.0.126.128
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: 80-8000
+    port: 80
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: northbriton
+  sessionAffinity: None
+  type: ClusterIP
+status:
+  loadBalancer: {}
