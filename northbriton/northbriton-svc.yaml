@@ -1,13 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  creationTimestamp: "2022-11-25T04:31:27Z"
   labels:
     app: northbriton
-  name: northbriton
-  namespace: default
-  resourceVersion: "806326"
-  uid: 17884021-2f64-476d-b15e-cae927262c41
+  name: northbriton  
 spec:
   clusterIP: 10.0.126.128
   clusterIPs:
@@ -25,5 +21,3 @@ spec:
     app: northbriton
   sessionAffinity: None
   type: ClusterIP
-status:
-  loadBalancer: {}

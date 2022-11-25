@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>{{ .UserPublicName }}</title>
+		<title>Zebu</title>
 		<link href="/static/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3">
         <script src="/static/web3.min.js"></script>
     </head>
@@ -37,7 +37,9 @@
           var connectBtn = document.getElementById('connect-btn')
           connectBtn.disabled = true
           document.cookie = "zebu_account=" + account;
+		  console.log("set cookie zebu_account=" + account)
 		  window.location.reload()
+		} else {		
 		  alert('MetaMask is not installed!');
 		}
       }

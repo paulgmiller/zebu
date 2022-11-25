@@ -26,6 +26,7 @@ func serve(backend Backend) {
 	router.SetHTMLTemplate(t)
 	router.GET("/", func(c *gin.Context) {
 		account, err := c.Cookie("zebu_account")
+		log.Printf("got cookie: %s", account)
 		if err == http.ErrNoCookie {
 			home(backend, c)
 			return
@@ -80,9 +81,7 @@ func serve(backend Backend) {
 func home(backend Backend, c *gin.Context) {
 	//show a random set of users? Too gross?
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts":          []FetchedPost{},
-		"UserId":         c.Cookie,
-		"UserPublicName": "nobody",
+		"Posts": []FetchedPost{},
 	})
 }
 
@@ -93,6 +92,7 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 		errorPage(err, c)
 		return
 	}
+	log.Printf("got user %v", me)
 	var followedposts []FetchedPost
 	for _, follow := range me.Follows {
 		f, err := backend.GetUserById(follow)
@@ -124,6 +124,7 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 		errorPage(err, c)
 		return
 	}
+	log.Printf("found post %s", mine[0].Content)
 	if len(mine) > 0 {
 		p := mine[0]
 		content, err := backend.Cat(p.Content)
@@ -311,10 +312,6 @@ func acceptFollow(backend UserBackend, c *gin.Context) {
 	c.JSON(200, followrecord)
 }
 
-type simpleRegister struct {
-	Name string `form:"name"`
-}
-
 func register(displayname, publicname string) (string, error) {
 	//see if this is already
 	//take this env var? turn off on non prod
@@ -336,15 +333,15 @@ func register(displayname, publicname string) (string, error) {
 }
 
 func registerDisplayName(backend Backend, c *gin.Context) {
-	account, err := c.Cookie("zebu_account")
-	if err == http.ErrNoCookie {
-		errorPage(fmt.Errorf("no account cookie"), c)
+	account, faccount := c.GetPostForm("account")
+	displayname, ff := c.GetPostForm("register")
+	if !ff && !faccount {
+		errorPage(fmt.Errorf("need account and followee"), c)
 	}
-	var simpleRegister simpleRegister
-	c.Bind(&simpleRegister)
-	displayname := strings.TrimSpace(simpleRegister.Name)
+
+	displayname = strings.TrimSpace(displayname)
 	//validate valida dns host? https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names rfc 1123
-	displayname, err = register(displayname, account)
+	displayname, err := register(displayname, account)
 	if err != nil {
 		errorPage(err, c)
 	}

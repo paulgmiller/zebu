@@ -15,6 +15,12 @@
     	</nav>
 		<div><a href="/user/{{ .UserPublicName }}">{{ .UserId }}</a>(ask friends to follow {{ .UserPublicName }})</div>
 		<br />
+		<!-- only show if no name is set -->
+		<form onsubmit="register(event)" >
+			<textarea name="register" rows="1" cols="64"></textarea>
+			<br/>
+			<input type="submit" value="Register">
+		</form>
 		<form onsubmit="savepost(event)" >
 			<textarea id="post-text" name="post" rows="12" cols="100"></textarea>
 			<br/>
@@ -22,8 +28,8 @@
 			<br/>
 			<input type="submit" value="Submit">
 		</form >
-		<form action="follow(event)" >
-			<textarea name="followee" rows="2" cols="64"></textarea>
+		<form onsubmit="follow(event)" >
+			<textarea name="followee" rows="1" cols="64"></textarea>
 			<br/>
 			<input type="submit" value="Follow">
 		</form>
@@ -66,7 +72,25 @@
 			var formData = new FormData(event.target)
 			formData.append("account", account)
 			console.log(formData)
-			var response = await fetch("follow", { method: "POST", body: formData}  )
+			var response = await fetch("/follow", { method: "POST", body: formData}  )
+			var r2 = response.clone()
+			var data = await response.json()
+			var rawjson = await r2.text()
+			console.log("rawjson: " + rawjson)
+			var signature = await w3.eth.personal.sign(rawjson, account)
+			data.Signature = signature
+			console.log(data)
+			response = await fetch("/sign", { method: "POST", body: JSON.stringify(data)}  )
+			console.log(response)
+			location.reload()
+		}
+
+		const register = async (event) => {
+			event.preventDefault()
+			var formData = new FormData(event.target)
+			formData.append("account", account)
+			console.log(formData)
+			var response = await fetch("/register", { method: "POST", body: formData}  )
 			var r2 = response.clone()
 			var data = await response.json()
 			var rawjson = await r2.text()
