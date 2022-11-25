@@ -269,10 +269,8 @@ func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 	if !found {
 		return User{PublicName: userid}, nil //bad idea. too late!
 	}
-	log.Printf("looking up %s", userrecord.CID)
 	var user User
 	err = b.readJson(userrecord.CID, &user)
-	log.Printf("got user %s/%s", user.PublicName, userrecord.CID)
 	return user, err
 }
 

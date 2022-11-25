@@ -26,7 +26,6 @@ func serve(backend Backend) {
 	router.SetHTMLTemplate(t)
 	router.GET("/", func(c *gin.Context) {
 		account, err := c.Cookie("zebu_account")
-		log.Printf("got cookie: %s", account)
 		if err == http.ErrNoCookie {
 			home(backend, c)
 			return
@@ -124,7 +123,7 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 		errorPage(err, c)
 		return
 	}
-	log.Printf("found post %s", mine[0].Content)
+
 	if len(mine) > 0 {
 		p := mine[0]
 		content, err := backend.Cat(p.Content)
@@ -340,15 +339,18 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 	}
 
 	displayname = strings.TrimSpace(displayname)
+	log.Printf("regisering %s->%s", account, displayname)
 	//validate valida dns host? https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names rfc 1123
 	displayname, err := register(displayname, account)
 	if err != nil {
 		errorPage(err, c)
+		return
 	}
 
 	user, err := backend.GetUserById(account)
 	if err != nil {
 		errorPage(err, c)
+		return
 	}
 
 	user.DisplayName = displayname

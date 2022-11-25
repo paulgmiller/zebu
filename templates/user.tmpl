@@ -16,7 +16,7 @@
 		<div><a href="/user/{{ .UserPublicName }}">{{ .UserId }}</a>(ask friends to follow {{ .UserPublicName }})</div>
 		<br />
 		<!-- only show if no name is set -->
-		<form onsubmit="register(event)" >
+		<form onsubmit="saveregister(event)" >
 			<textarea name="register" rows="1" cols="64"></textarea>
 			<br/>
 			<input type="submit" value="Register">
@@ -85,7 +85,7 @@
 			location.reload()
 		}
 
-		const register = async (event) => {
+		const saveregister = async (event) => {
 			event.preventDefault()
 			var formData = new FormData(event.target)
 			formData.append("account", account)
