@@ -95,7 +95,7 @@ func (unr *UserNameRecord) Sign(privatekey *ecdsa.PrivateKey) error {
 type User struct {
 	LastPost    string
 	Follows     []string
-	DisplayName string //end or dns name?
+	DisplayName string //ens or dns name
 	PublicName  string //public key
 }
 

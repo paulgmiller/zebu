@@ -30,7 +30,7 @@ gets us timeouts for not found
 ### ENS  and dns integration
 https://github.com/web3/web3.js/issues/2683
 let them register after connect
-move north briton to k8s
+import uses names
 
 ### protect against spam. 
 
@@ -39,11 +39,13 @@ loadbalancer with different ports
 persistent volumes
 
 ## run importer
+nitter has rss feeds. Let people 
+https://nitter.net/about
 
 ## e2e test.
 
 ## better homepage
 
-## put it arm because fuck it
+## mirror northbriton traffic to web3.storage
 
 ## retweets and likes

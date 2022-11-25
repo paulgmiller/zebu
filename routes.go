@@ -2,12 +2,13 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -25,7 +26,6 @@ func serve(backend Backend) {
 	router.SetHTMLTemplate(t)
 	router.GET("/", func(c *gin.Context) {
 		account, err := c.Cookie("zebu_account")
-		log.Printf("got cookie %s", account)
 		if err == http.ErrNoCookie {
 			home(backend, c)
 			return
@@ -50,12 +50,10 @@ func serve(backend Backend) {
 	router.POST("/follow", func(c *gin.Context) {
 		acceptFollow(backend, c)
 	})
-	/*router.POST("/register", func(c *gin.Context) {
-		registerPublicName(backend, c)
+
+	router.POST("/register", func(c *gin.Context) {
+		registerDisplayName(backend, c)
 	})
-	router.GET("/register", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "register.tmpl", gin.H{})
-	})*/
 
 	router.GET("/user/:id", func(c *gin.Context) {
 		userpage(backend, c)
@@ -80,7 +78,7 @@ func serve(backend Backend) {
 }
 
 func home(backend Backend, c *gin.Context) {
-	//
+	//show a random set of users? Too gross?
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
 		"Posts":          []FetchedPost{},
 		"UserId":         c.Cookie,
@@ -142,16 +140,20 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 	}
 	//users could lie abotu time but trust for now
 	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
+	name := me.DisplayName
+	if name == "" {
+		name = me.PublicName
+	}
 	c.HTML(http.StatusOK, "user.tmpl", gin.H{
 		"Posts":          followedposts,
 		"UserId":         account,
-		"UserPublicName": me.PublicName,
+		"UserPublicName": name,
 	})
 }
 
 func errorPage(err error, c *gin.Context) {
 	log.Printf("ERROR: %s", err.Error())
-	c.JSON(400, gin.H{"msg": err.Error()})
+	c.JSON(500, gin.H{"msg": err.Error()})
 }
 
 type simpleuser struct {
@@ -285,8 +287,6 @@ func acceptPost(backend Backend, c *gin.Context) {
 		errorPage(err, c)
 		return
 	}
-	jsonrecord, _ := json.Marshal(posterrecord)
-	log.Printf("returning %s", jsonrecord)
 	c.JSON(200, posterrecord)
 }
 
@@ -308,41 +308,58 @@ func acceptFollow(backend UserBackend, c *gin.Context) {
 		errorPage(err, c)
 	}
 
-	jsonrecord, _ := json.Marshal(followrecord)
-	log.Printf("returning %s", jsonrecord)
 	c.JSON(200, followrecord)
 }
 
 type simpleRegister struct {
-	PublicName string `form:"publicname"`
+	Name string `form:"name"`
 }
 
-/* This still makes some sense. Give them a domain name if their account has more than some eth in it.
-func registerPublicName(backend Backend, c *gin.Context) {
-	var simpleRegister simpleRegister
-	c.Bind(&simpleRegister)
-	publicname := strings.TrimSpace(simpleRegister.PublicName)
-	url := "https://registrar.northbriton.net/reserve/" + publicname
-	req, err := http.NewRequest(http.MethodPut, url, strings.NewReader(backend.GetUserId()))
+func register(displayname, publicname string) (string, error) {
+	//see if this is already
+	//take this env var? turn off on non prod
+	url := "http://northbriton/reserve/" + displayname
+	req, err := http.NewRequest(http.MethodPut, url, strings.NewReader(publicname))
 	if err != nil {
-		errorPage(err, c)
+		return "", err
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		errorPage(err, c)
+		return "", err
 	}
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := ioutil.ReadAll(resp.Body)
-		errorPage(fmt.Errorf("got %d : %s", resp.StatusCode, string(body)), c)
+		return "", fmt.Errorf("got %d : %s", resp.StatusCode, string(body))
 	}
+	//get this out of body?
+	return publicname + ".northbriton.net", nil
+}
 
-	user, err := backend.GetUserById(backend.GetUserId())
+func registerDisplayName(backend Backend, c *gin.Context) {
+	account, err := c.Cookie("zebu_account")
+	if err == http.ErrNoCookie {
+		errorPage(fmt.Errorf("no account cookie"), c)
+	}
+	var simpleRegister simpleRegister
+	c.Bind(&simpleRegister)
+	displayname := strings.TrimSpace(simpleRegister.Name)
+	//validate valida dns host? https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names rfc 1123
+	displayname, err = register(displayname, account)
 	if err != nil {
 		errorPage(err, c)
 	}
-	user.PublicName = publicname + ".northbriton.net"
-	backend.SaveUserCid(user)
 
-	c.Redirect(http.StatusFound, "/")
+	user, err := backend.GetUserById(account)
+	if err != nil {
+		errorPage(err, c)
+	}
+
+	user.DisplayName = displayname
+
+	registerrecord, err := backend.SaveUserCid(user) //ignoring erros for now
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+	c.JSON(200, registerrecord)
 }
-*/
