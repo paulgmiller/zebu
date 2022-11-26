@@ -7,11 +7,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
 	"os"
-	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/araddon/dateparse"
@@ -19,6 +20,8 @@ import (
 	"github.com/gilliek/go-opml/opml"
 	"github.com/mmcdole/gofeed"
 )
+
+const importskeypath = "import_keys"
 
 func Import(ctx context.Context, opmplpath string) ([]string, error) {
 	importedusers := []string{}
@@ -28,6 +31,11 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 	}
 	b := NewIpfsBackend(ctx)
 
+	if _, err := os.Stat(importskeypath); errors.Is(err, os.ErrNotExist) {
+		if err := os.Mkdir(importskeypath, os.ModePerm); err != nil {
+			return nil, err
+		}
+	}
 	var wg sync.WaitGroup
 	seen := map[string]bool{}
 	for _, o := range doc.Body.Outlines {
@@ -44,11 +52,11 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 				log.Printf("skipping %s", feed.XMLURL)
 				continue
 			}
-			keyfile := "imported_keys/" + urlhash //these are secerts where should we save them?
+			keyfile := importskeypath + "/" + urlhash //these are secerts where should we save them?
 			privatekey, err := crypto.LoadECDSA(keyfile)
 			if err != nil {
 				if !os.IsNotExist(err) {
-					log.Println(err.Error())
+					log.Printf("load of key failed %s", err)
 					continue
 				}
 				privatekey, err = crypto.GenerateKey()
@@ -57,7 +65,7 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 					continue
 				}
 				if err := crypto.SaveECDSA(keyfile, privatekey); err != nil {
-					log.Println(err.Error())
+					log.Printf("save of key failed %s", err)
 					continue
 				}
 			}
@@ -74,9 +82,9 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 			}
 
 			if author.DisplayName == "" {
-				nonalphanumberic := regexp.MustCompile("/[^0-9a-z]/gi")
-				title := nonalphanumberic.ReplaceAllString(feed.Title, "")
-				dp, err := RegisterDNS(title+".mir", addr)
+
+				//resolve dns?
+				dp, err := RegisterDNS(simplifyTitle(feed.Title), addr)
 				if err != nil {
 					log.Println(err.Error())
 					continue
@@ -84,7 +92,7 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 				author.DisplayName = dp
 			}
 			author.ImportSource = trimurl
-			importedusers = append(importedusers, addr)
+			importedusers = append(importedusers, author.DisplayName)
 			wg.Add(1)
 			go func(url string) {
 				defer wg.Done()
@@ -105,6 +113,19 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 	}
 	wg.Wait()
 	return importedusers, nil
+}
+
+var alphanum = "abcdefghijklmnopqrstuvwxyz1234567890"
+
+func simplifyTitle(title string) string {
+	var b strings.Builder
+	title = strings.ToLower(title)
+	for _, ch := range title {
+		if strings.Contains(alphanum, string(ch)) {
+			b.WriteRune(ch)
+		}
+	}
+	return b.String()
 }
 
 func publishWithKey(author User, b UserBackend, privatekey *ecdsa.PrivateKey) error {

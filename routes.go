@@ -318,19 +318,33 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 		errorPage(fmt.Errorf("need account and followee"), c)
 	}
 
-	//resolve dns.
-
-	displayname = strings.TrimSpace(displayname)
-	log.Printf("regisering %s->%s", account, displayname)
-	//validate valida dns host? https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names rfc 1123
-	displayname, err := RegisterDNS(displayname, account)
+	user, err := backend.GetUserById(account)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
 
-	user, err := backend.GetUserById(account)
+	currentaddress, err := ResolveDns(displayname)
+	if err != nil && err != DNSNotFound {
+		errorPage(err, c)
+		return
+	}
+	if err != DNSNotFound && currentaddress != account {
+		errorPage(fmt.Errorf("that dns already belongs to %s", currentaddress), c)
+		return
+	}
+
+	if currentaddress == account {
+		c.Status(http.StatusNotModified)
+		return
+	}
+
+	displayname = strings.TrimSpace(displayname)
+	log.Printf("regisering %s->%s", account, displayname)
+	//validate valida dns host? https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names rfc 1123
+	displayname, err = RegisterDNS(displayname, account)
 	if err != nil {
+
 		errorPage(err, c)
 		return
 	}

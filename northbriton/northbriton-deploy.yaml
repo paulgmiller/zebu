@@ -23,7 +23,7 @@ spec:
         app: northbriton
     spec:
       containers:
-      - image: paulgmiller/northbriton
+      - image: paulgmiller/northbriton:605ec67
         imagePullPolicy: Always
         name: northbriton
         resources: {}

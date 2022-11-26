@@ -28,20 +28,13 @@ func main() {
 
 	if *opmlpath != "" {
 		log.Printf("opmlpath %s", *opmlpath)
-		/*
-			imports, err := Import(ctx, *opmlpath)
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-			//user, err := backend.GetUserById(backend.GetUserId())
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-			for _, i := range imports {
-				user.Follow(i)
-			}
-			backend.SaveUser(user)
-		*/
+
+		imports, err := Import(ctx, *opmlpath)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		log.Printf("imported %v", imports)
+		return
 	}
 
 	serve(backend)
