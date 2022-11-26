@@ -31,6 +31,11 @@ func serve(backend Backend) {
 		}
 		userfeed(backend, c, account)
 	})
+
+	router.GET("/rand", func(c *gin.Context) {
+		home(backend, c)
+	})
+
 	router.POST("/post", func(c *gin.Context) {
 		acceptPost(backend, c)
 	})
@@ -77,9 +82,26 @@ func serve(backend Backend) {
 }
 
 func home(backend Backend, c *gin.Context) {
-	//show a random set of users? Too gross?
+	users := backend.RandomUsers(2)
+	log.Printf("getting random users %v", users)
+	posts := []FetchedPost{}
+	for _, u := range users {
+		user, err := backend.GetUserById(u)
+		if err != nil {
+			errorPage(err, c)
+			return
+		}
+		log.Printf("got user %s", user.DisplayName)
+
+		posts, err = userPosts(backend, user)
+		if err != nil {
+			errorPage(err, c)
+			return
+		}
+
+	}
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts": []FetchedPost{},
+		"Posts": posts,
 	})
 }
 
@@ -183,34 +205,39 @@ func userpage(backend Backend, c *gin.Context) {
 		return
 	}
 
-	userPosts(backend, user, simpleUser.Id, c)
-}
-
-func userPosts(backend Backend, user User, author string, c *gin.Context) {
-	var userposts []FetchedPost
-	posts, err := backend.GetPosts(user, 10)
+	userposts, err := userPosts(backend, user)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
+
+	c.HTML(http.StatusOK, "index.tmpl", gin.H{
+		"Posts":          userposts,
+		"UserId":         user.DisplayName,
+		"UserPublicName": user.PublicName,
+	})
+}
+
+func userPosts(backend Backend, user User) ([]FetchedPost, error) {
+	var userposts []FetchedPost
+	posts, err := backend.GetPosts(user, 10)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("got %d posts for user %s", len(posts), user.DisplayName)
 	for _, p := range posts {
 		content, err := backend.Cat(p.Content)
 		if err != nil {
-			errorPage(err, c)
-			return
+			return nil, err
 		}
 		userposts = append(userposts, FetchedPost{
 			Post:             p,
 			RenderedContent:  template.HTML(content),
-			Author:           author,
+			Author:           user.DisplayName,
 			AuthorPublicName: user.PublicName,
 		})
 	}
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts":          userposts,
-		"UserId":         author,
-		"UserPublicName": user.PublicName,
-	})
+	return userposts, nil
 }
 
 func sign(backend UserBackend, c *gin.Context) {

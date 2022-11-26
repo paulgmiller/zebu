@@ -19,7 +19,7 @@
 		{{range .Images}}
 		<img src="/img/{{.}}" width="100"/>
 		{{end}}
-		<div><a href="/user/{{ .AuthorPublicName }}">{{ .AuthorPublicName }}</a> at {{ .Created }}</div>
+		<div><a href="/user/{{ .AuthorPublicName }}">{{ .Author }}</a> at {{ .Created }}</div>
 		<br />		
         {{else}}
         <div><strong>No Posts</strong></div>

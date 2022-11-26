@@ -20,6 +20,7 @@ type Backend interface {
 	ContentBackend
 	UserBackend
 	Healthz
+	RandomUsers(int) []string
 }
 
 type UserBackend interface {
@@ -78,6 +79,20 @@ func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 		log.Fatalf("coudlnt set up listener, %s", err)
 	}
 	return backend
+}
+
+func (b *IpfsBackend) RandomUsers(n int) []string {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	users := []string{}
+	for k, _ := range b.records {
+		if n <= 0 {
+			break
+		}
+		users = append(users, k)
+		n -= 1
+	}
+	return users
 }
 
 func (b *IpfsBackend) Healthz() bool {
