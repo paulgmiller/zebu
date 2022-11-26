@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"sort"
@@ -114,7 +113,8 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 				Post:             p,
 				RenderedContent:  template.HTML(content),
 				Author:           follow,
-				AuthorPublicName: f.PublicName,
+				AuthorPublicName: f.DisplayName,
+				//send up public name too
 			})
 		}
 	}
@@ -311,26 +311,6 @@ func acceptFollow(backend UserBackend, c *gin.Context) {
 	c.JSON(200, followrecord)
 }
 
-func register(displayname, publicname string) (string, error) {
-	//see if this is already
-	//take this env var? turn off on non prod
-	url := "http://northbriton/reserve/" + displayname
-	req, err := http.NewRequest(http.MethodPut, url, strings.NewReader(publicname))
-	if err != nil {
-		return "", err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode != http.StatusCreated {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return "", fmt.Errorf("got %d : %s", resp.StatusCode, string(body))
-	}
-	//get this out of body?
-	return publicname + ".northbriton.net", nil
-}
-
 func registerDisplayName(backend Backend, c *gin.Context) {
 	account, faccount := c.GetPostForm("account")
 	displayname, ff := c.GetPostForm("register")
@@ -338,10 +318,12 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 		errorPage(fmt.Errorf("need account and followee"), c)
 	}
 
+	//resolve dns.
+
 	displayname = strings.TrimSpace(displayname)
 	log.Printf("regisering %s->%s", account, displayname)
 	//validate valida dns host? https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names rfc 1123
-	displayname, err := register(displayname, account)
+	displayname, err := RegisterDNS(displayname, account)
 	if err != nil {
 		errorPage(err, c)
 		return

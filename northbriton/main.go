@@ -133,7 +133,7 @@ func Reserve(w http.ResponseWriter, r *http.Request) {
 	resp, err := api.CreateDNSRecord(r.Context(), nbid, cloudflare.DNSRecord{
 		Name:    fullname,
 		Type:    "TXT",
-		Content: "dnslink=/ipns/" + string(bodybytes),
+		Content: "dnslink=/zebu/" + string(bodybytes),
 	})
 	if err != nil || !resp.Success {
 		http.Error(w, "Error reserving "+name, http.StatusInternalServerError)

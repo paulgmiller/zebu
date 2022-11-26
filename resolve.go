@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ipfs/go-dnslink"
 	ens "github.com/wealdtech/go-ens/v3"
 )
 
@@ -104,4 +107,48 @@ func ResolveEns(ensdomain string) {
 			fmt.Println(link)
 		}
 	*/
+}
+
+func RegisterDNS(displayname, publicname string) (string, error) {
+	//see if this is already
+	//take this env var? turn off on non prod
+	endpoint, ok := os.LookupEnv("REGISTERENDPOINT")
+	if !ok {
+		endpoint = "northbriton"
+	}
+
+	url := fmt.Sprintf("http://%s/reserve/%s", endpoint, displayname)
+	req, err := http.NewRequest(http.MethodPut, url, strings.NewReader(publicname))
+	if err != nil {
+		return "", err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return "", fmt.Errorf("got %d : %s", resp.StatusCode, string(body))
+	}
+	//get this out of body?
+	return displayname + ".northbriton.net", nil
+}
+
+const legacyipnsprefix = "/ipns"
+
+func ResolveDns(dnsname string) (bool, string) {
+	link, err := dnslink.Resolve(dnsname)
+	if err != nil {
+		log.Printf("error resolving %s, %s", dnsname, err)
+		return false, ""
+	}
+	if strings.HasPrefix(link, centraltopic) {
+		return true, link[len(centraltopic):]
+	}
+	//remove after we swith over.
+	if strings.HasPrefix(link, legacyipnsprefix) {
+		return true, link[len(legacyipnsprefix):]
+	}
+	log.Printf("link %s didn't match prefixes", link)
+	return false, ""
 }

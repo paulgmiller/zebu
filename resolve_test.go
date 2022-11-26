@@ -18,3 +18,14 @@ func TestMarshal(t *testing.T) {
 	}
 
 }
+
+func TestResolveDNS(t *testing.T) {
+	found, a := ResolveDns("johnwilkes.northbriton.net")
+	if !found {
+		t.Fatal("didn't find dns")
+	}
+	if a != account {
+		t.Fatalf("%s!=%s", a, account)
+	}
+
+}

@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ipfs/go-dnslink"
 	ipfs "github.com/ipfs/go-ipfs-api"
 )
 
@@ -251,17 +250,11 @@ func AddString(backend Backend, content string) (string, error) {
 	return backend.Add(strings.NewReader(content))
 }
 
-const ipnsprefix = "/ipns/"
-
 //so a user id could be ens/dns/or ethereum public key
 func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 
 	//todo resolve ens address https://github.com/wealdtech/go-ens and infura
 	//but to start use ResolveEthLink/ https://eth.link/
-	link, err := dnslink.Resolve(userid)
-	if err != nil && strings.HasPrefix(link, ipnsprefix) {
-		userid = link[len(ipnsprefix):]
-	}
 
 	b.lock.RLock()
 	defer b.lock.RUnlock()
@@ -270,7 +263,7 @@ func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 		return User{PublicName: userid}, nil //bad idea. too late!
 	}
 	var user User
-	err = b.readJson(userrecord.CID, &user)
+	err := b.readJson(userrecord.CID, &user)
 	return user, err
 }
 
