@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -136,19 +137,38 @@ func RegisterDNS(displayname, publicname string) (string, error) {
 
 const legacyipnsprefix = "/ipns"
 
-func ResolveDns(dnsname string) (bool, string) {
-	link, err := dnslink.Resolve(dnsname)
+var DNSNotFound = fmt.Errorf("DNSNOTFOUND")
+
+func ResolveDns(dnsname string) (string, error) {
+	txts, err := net.LookupTXT("_dnslink." + dnsname)
 	if err != nil {
-		log.Printf("error resolving %s, %s", dnsname, err)
-		return false, ""
+		log.Printf("failed to find _dnslink." + dnsname)
+		derr := err.(*net.DNSError)
+		if derr.IsNotFound {
+			return "", DNSNotFound
+		}
+		return "", err
 	}
+	link := ""
+	for _, t := range txts {
+		link, err = dnslink.ParseTXT(t)
+		if err == nil {
+			continue
+		}
+		log.Printf("invalid dns link %s", t)
+	}
+
+	if link == "" {
+		return "", DNSNotFound
+	}
+
 	if strings.HasPrefix(link, centraltopic) {
-		return true, link[len(centraltopic):]
+		return link[len(centraltopic)+1:], nil
 	}
 	//remove after we swith over.
 	if strings.HasPrefix(link, legacyipnsprefix) {
-		return true, link[len(legacyipnsprefix):]
+		return link[len(legacyipnsprefix)+1:], nil
 	}
 	log.Printf("link %s didn't match prefixes", link)
-	return false, ""
+	return "", DNSNotFound
 }

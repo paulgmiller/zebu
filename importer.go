@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"regexp"
 	"sync"
 
 	"github.com/araddon/dateparse"
@@ -70,9 +71,19 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 			if author.PublicName == "" {
 				//need to generate a public key or use the node public key.
 				author.PublicName = addr
-				author.DisplayName = trimurl
-				//write the key somewhere
 			}
+
+			if author.DisplayName == "" {
+				nonalphanumberic := regexp.MustCompile("/[^0-9a-z]/gi")
+				title := nonalphanumberic.ReplaceAllString(feed.Title, "")
+				dp, err := RegisterDNS(title+".mir", addr)
+				if err != nil {
+					log.Println(err.Error())
+					continue
+				}
+				author.DisplayName = dp
+			}
+			author.ImportSource = trimurl
 			importedusers = append(importedusers, addr)
 			wg.Add(1)
 			go func(url string) {

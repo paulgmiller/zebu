@@ -93,10 +93,11 @@ func (unr *UserNameRecord) Sign(privatekey *ecdsa.PrivateKey) error {
 }
 
 type User struct {
-	LastPost    string
-	Follows     []string
-	DisplayName string //ens or dns name
-	PublicName  string //public key
+	LastPost     string
+	Follows      []string //do we follow dns/ens dispalay names or addresses or keep both?
+	DisplayName  string   //ens or dns name
+	PublicName   string   //public key
+	ImportSource string   `json:"ImportSource,omitempty"`
 }
 
 //ugh why doesn't this exist.
