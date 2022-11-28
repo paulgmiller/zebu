@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,7 +14,9 @@ import (
 	"sync"
 	"time"
 
-	ipfs "github.com/ipfs/go-ipfs-api"
+	httpapi "github.com/ipfs/go-ipfs-http-client"
+	"github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/multiformats/go-multiaddr"
 )
 
 type Backend interface {
@@ -31,7 +34,7 @@ type UserBackend interface {
 }
 
 type Healthz interface {
-	Healthz() bool
+	Healthz(context.Context) bool
 }
 
 type ContentBackend interface {
@@ -45,7 +48,8 @@ type ContentBackend interface {
 
 type IpfsBackend struct {
 	//content
-	shell *ipfs.Shell
+	//shell *ipfs.Shell
+	api *httpapi.HttpApi
 
 	//pubsub caching layer.
 	lock    sync.RWMutex
@@ -56,17 +60,23 @@ func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 
 	ipfsserver, found := os.LookupEnv("IPFS_SERVER")
 	if !found {
-		ipfsserver = "localhost:5001"
+		ipfsserver = "/ip4/127.0.0.1/tcp/5001"
 	}
 
 	//https: //github.com/ipfs/kubo/tree/master/docs/examples/kubo-as-a-library
-	shell := ipfs.NewShell(ipfsserver)
+	/*shell := ipfs.NewShell(ipfsserver)
 	if !shell.IsUp() {
 		log.Fatal("Ipfs not fond on localhost:5001 please install https://docs.ipfs.io/install/command-line/#official-distributions")
+	}*/
+
+	ipsaddr, err := multiaddr.NewMultiaddr(ipfsserver)
+	if err != nil {
+		log.Fatalf("failed to parse %s", ipfsserver)
 	}
+	ipfsapi, err := httpapi.NewApi(ipsaddr)
 
 	backend := &IpfsBackend{
-		shell:   shell,
+		api:     ipfsapi,
 		records: map[string]UserNameRecord{},
 	}
 
@@ -95,8 +105,12 @@ func (b *IpfsBackend) RandomUsers(n int) []string {
 	return users
 }
 
-func (b *IpfsBackend) Healthz() bool {
-	return b.shell.IsUp()
+func (b *IpfsBackend) Healthz(ctx context.Context) bool {
+	//was .shell.IsUp(). Maybe should get a know block instead?
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	_, err := b.api.Block().Get(ctx, path.New("/ipfs/QmZfrSV2wLUm36Ycn8s9NrUJDN1NHfCYKcxZL8Kv7bjoFJ"))
+	return err == nil
 }
 
 const centraltopic = "/zebu"
@@ -113,7 +127,8 @@ DEPRECATED SUBCOMMANDS
 */
 
 func (b *IpfsBackend) listen(ctx context.Context) error {
-	sub, err := b.shell.PubSubSubscribe(centraltopic)
+	sub, err := b.api.PubSub().Subscribe(ctx, centraltopic)
+	//sub, err := b.shell.PubSubSubscribe(centraltopic)
 	if err != nil {
 		return fmt.Errorf("failed to subsciribe to %s %w", centraltopic, err)
 	}
@@ -123,14 +138,14 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 				break
 			}
 
-			msg, err := sub.Next()
+			msg, err := sub.Next(ctx)
 			if err != nil {
 				log.Fatalf("subscription broke") //TODO what kind of errors should expect here Can we recver or should we tear down?
 			}
 
 			//would msg.sequence number replace
 			unr := &UserNameRecord{}
-			if err = json.Unmarshal(msg.Data, unr); err != nil {
+			if err = json.Unmarshal(msg.Data(), unr); err != nil {
 				log.Printf("unserializable message %v", msg.Data)
 				continue
 			}
@@ -149,7 +164,14 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 					log.Printf("update is new %s", unr.PubKey)
 					b.records[unr.PubKey] = *unr
 					usertopic := centraltopic + "/" + string(unr.PubKey)
-					if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
+					//if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
+
+					//b.api doesn't have mutable files yet.
+					//if _, err := b.api.Unixfs().Add(ctx, files.NewBytesFile(msg.Data())); err != nil {
+					//	log.Printf("failed to save %s", unr.PubKey)
+					//}
+					err = os.WriteFile("users/"+string(unr.PubKey), msg.Data(), 0600)
+					if err != nil {
 						log.Printf("failed to save %s", unr.PubKey)
 					}
 					log.Printf("wrote to %s", usertopic)
@@ -168,24 +190,28 @@ func (b *IpfsBackend) republishRecords(ctx context.Context) {
 				break
 			}
 
-			users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
+			files, err := ioutil.ReadDir("users")
 			if err != nil {
 				log.Fatalf("could't list user storage: %s", err)
 			}
-			for _, u := range users {
+			//users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
+			if err != nil {
+				log.Fatalf("could't list user storage: %s", err)
+			}
+			for _, f := range files {
 
-				json, err := b.Cat(u.Hash)
+				bytes, err := ioutil.ReadFile("users/" + f.Name())
 				if err != nil {
-					log.Printf("couldn't read %s: %s", u.Name, u.Hash)
+					log.Fatalf("could't read user %s: %s", f.Name(), err)
 				}
 
-				usertopic := centraltopic + "/" + u.Name
+				usertopic := centraltopic + "/" + f.Name()
 
 				//so to start with we'll publish everythig to one path to make everthing findable. Eventually that will explode
-				if err := b.shell.PubSubPublish(centraltopic, json); err != nil {
+				if err := b.api.PubSub().Publish(ctx, centraltopic, bytes); err != nil {
 					log.Printf("failed to publish to %s, %s", usertopic, err)
 				}
-				if b.shell.PubSubPublish(usertopic, json); err != nil {
+				if err := b.api.PubSub().Publish(ctx, usertopic, bytes); err != nil {
 					log.Printf("failed to publish to %s, %s", usertopic, err)
 				}
 			}
@@ -196,32 +222,43 @@ func (b *IpfsBackend) republishRecords(ctx context.Context) {
 
 func (b *IpfsBackend) loadRecords(ctx context.Context) {
 
-	if err := b.shell.FilesMkdir(ctx, centraltopic, ipfs.FilesMkdir.Parents(true)); err != nil {
-		log.Fatalf("count't init user storage: %s", err)
+	if _, err := os.Stat("users"); errors.Is(err, os.ErrNotExist) {
+		if err := os.Mkdir("users", os.ModePerm); err != nil {
+			log.Fatalf("couldn't make dir: %s", err)
+		}
 	}
 
-	users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
+	//users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
+	files, err := os.ReadDir("users")
 	if err != nil {
 		log.Fatalf("could't list user storage: %s", err)
 	}
-	log.Printf("got %d users", len(users))
+	//users, err := b.api.Unixfs().Ls(ctx, path.New(centraltopic))
+	log.Printf("got %d users", len(files))
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	for _, u := range users {
+	for _, f := range files {
 		var unr UserNameRecord
-		if err := b.readJson(u.Hash, &unr); err != nil {
-			log.Printf("couldn't read %s: %s", u.Name, u.Hash)
+		f.Info()
+		bytes, err := ioutil.ReadFile("users/" + f.Name())
+		if err != nil {
+			log.Fatalf("could't read user %s: %s", f.Name(), err)
+		}
+		err = json.Unmarshal(bytes, &unr)
+		if err != nil {
+			log.Fatalf("could't read user %s: %s", f.Name(), err)
 		}
 		b.records[unr.PubKey] = unr
 	}
 }
 
 func (b *IpfsBackend) readJson(cid string, obj interface{}) error {
-	reader, err := b.shell.Cat(cid)
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	reader, err := b.api.Block().Get(ctx, path.New("/ipfs/"+cid))
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
 	dec := json.NewDecoder(reader)
 	return dec.Decode(obj)
 }
@@ -233,7 +270,14 @@ func (b *IpfsBackend) writeJson(obj interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return b.shell.Add(&buf)
+	//return b.shell.Add(&buf)
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	block, err := b.api.Block().Put(ctx, bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return "", err
+	}
+	return block.Path().Cid().String(), nil
 }
 
 func (b *IpfsBackend) SavePost(post Post) (string, error) {
@@ -241,15 +285,19 @@ func (b *IpfsBackend) SavePost(post Post) (string, error) {
 }
 
 func (b *IpfsBackend) CatReader(cid string) (io.ReadCloser, error) {
-	return b.shell.Cat(cid)
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	reader, err := b.api.Block().Get(ctx, path.New("/ipfs/"+cid))
+	return io.NopCloser(reader), err
 }
 
 func (b *IpfsBackend) Cat(cid string) (string, error) {
-	contentreader, err := b.shell.Cat(cid)
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	contentreader, err := b.api.Block().Get(ctx, path.New("/ipfs/"+cid))
 	if err != nil {
 		return "", fmt.Errorf("can't get content %s: %w", cid, err)
 	}
-	defer contentreader.Close()
 	bytes, err := ioutil.ReadAll(contentreader)
 	if err != nil {
 		return "", fmt.Errorf("can't get content %s: %w", cid, err)
@@ -258,7 +306,13 @@ func (b *IpfsBackend) Cat(cid string) (string, error) {
 }
 
 func (b *IpfsBackend) Add(r io.Reader) (string, error) {
-	return b.shell.Add(r)
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	block, err := b.api.Block().Put(ctx, r)
+	if err != nil {
+		return "", err
+	}
+	return block.Path().Cid().String(), nil
 }
 
 func AddString(backend Backend, content string) (string, error) {
@@ -306,7 +360,6 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 	if err != nil {
 		return err
 	}
-	ujson := string(ujsonbytes)
 	{
 		b.lock.Lock()
 		defer b.lock.Unlock()
@@ -319,17 +372,22 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 	}
 	usertopic := centraltopic + "/" + u.PubKey
 
-	if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	//if _, err := b.api.Unixfs().Add(ctx, files.NewBytesFile(ujsonbytes)); err != nil {
+	//if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
+	if err = os.WriteFile("users/"+string(u.PubKey), ujsonbytes, 0600); err != nil {
 		log.Printf("failed to write to %s, %s", usertopic, err)
 		return err
 	}
 	log.Printf("wrote to %s", usertopic)
 	//so to start with we'll publish everythig to one path to make everthing findable. Eventually that will explode
-	if err := b.shell.PubSubPublish(centraltopic, ujson); err != nil {
-		return err
+
+	if err := b.api.PubSub().Publish(ctx, centraltopic, ujsonbytes); err != nil {
+		log.Printf("failed to publish to %s, %s", usertopic, err)
 	}
-	if b.shell.PubSubPublish(usertopic, ujson); err != nil {
-		return err
+	if err := b.api.PubSub().Publish(ctx, usertopic, ujsonbytes); err != nil {
+		log.Printf("failed to publish to %s, %s", usertopic, err)
 	}
 
 	return nil

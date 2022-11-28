@@ -45,7 +45,7 @@ func serve(backend Backend) {
 	})
 
 	router.GET("/healthz", func(c *gin.Context) {
-		if !backend.Healthz() {
+		if !backend.Healthz(c.Request.Context()) {
 			errorPage(fmt.Errorf("ipfs isn't up"), c)
 		}
 		c.Status(200)
