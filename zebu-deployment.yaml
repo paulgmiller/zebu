@@ -6,7 +6,7 @@ metadata:
   name: zebu
 spec:
   progressDeadlineSeconds: 600
-  replicas: 2
+  replicas: 1
   revisionHistoryLimit: 10
   selector:
     matchLabels:
@@ -23,7 +23,7 @@ spec:
         app: zebu
     spec:
       containers:
-      - image: paulgmiller/zebu:63085fd
+      - image: paulgmiller/zebu:dfce1d
         name: zebu
         resources: 
           requests:
