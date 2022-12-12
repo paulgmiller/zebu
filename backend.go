@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	cidlib "github.com/ipfs/go-cid"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/multiformats/go-multiaddr"
@@ -252,14 +253,19 @@ func (b *IpfsBackend) loadRecords(ctx context.Context) {
 	}
 }
 
-func (b *IpfsBackend) readJson(cid string, obj interface{}) error {
+func (b *IpfsBackend) readJson(cidstr string, obj interface{}) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
-	reader, err := b.api.Block().Get(ctx, path.New("/ipfs/"+cid))
+	cid, err := cidlib.Parse(cidstr)
 	if err != nil {
-		return err
+		return fmt.Errorf("faild to parse cidr %w", err)
 	}
-	dec := json.NewDecoder(reader)
+
+	o, err := b.api.Object().Get(ctx, path.IpfsPath(cid))
+	if err != nil {
+		return fmt.Errorf("faild to get object %s, %w", path.IpfsPath(cid), err)
+	}
+	dec := json.NewDecoder(bytes.NewReader(o.RawData()))
 	return dec.Decode(obj)
 }
 
@@ -284,17 +290,26 @@ func (b *IpfsBackend) SavePost(post Post) (string, error) {
 	return b.writeJson(&post)
 }
 
-func (b *IpfsBackend) CatReader(cid string) (io.ReadCloser, error) {
+func (b *IpfsBackend) CatReader(cidstr string) (io.ReadCloser, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
-	reader, err := b.api.Block().Get(ctx, path.New("/ipfs/"+cid))
+	cid, err := cidlib.Parse(cidstr)
+	if err != nil {
+		return nil, err
+	}
+
+	reader, err := b.api.Block().Get(ctx, path.IpfsPath(cid))
 	return io.NopCloser(reader), err
 }
 
-func (b *IpfsBackend) Cat(cid string) (string, error) {
+func (b *IpfsBackend) Cat(cidstr string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
-	contentreader, err := b.api.Block().Get(ctx, path.New("/ipfs/"+cid))
+	cid, err := cidlib.Parse(cidstr)
+	if err != nil {
+		return "", err
+	}
+	contentreader, err := b.api.Block().Get(ctx, path.IpfsPath(cid))
 	if err != nil {
 		return "", fmt.Errorf("can't get content %s: %w", cid, err)
 	}
@@ -332,7 +347,9 @@ func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 		return User{PublicName: userid}, nil //bad idea. too late!
 	}
 	var user User
+	fmt.Printf("reading json for %s ", userrecord.CID)
 	err := b.readJson(userrecord.CID, &user)
+	fmt.Printf("go error %s", err)
 	return user, err
 }
 
