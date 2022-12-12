@@ -153,8 +153,14 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 						log.Printf("failed to save %s", unr.PubKey)
 					}
 					log.Printf("wrote to %s", usertopic)
+					go func() {
+						if err := b.cacheUser(unr.PubKey, 10); err != nil {
+							log.Printf("failed to cache %s", unr.PubKey)
+						}
+					}()
 				}
 			}()
+
 		}
 	}()
 	return nil
@@ -205,14 +211,23 @@ func (b *IpfsBackend) loadRecords(ctx context.Context) {
 		log.Fatalf("could't list user storage: %s", err)
 	}
 	log.Printf("got %d users", len(users))
-	b.lock.Lock()
-	defer b.lock.Unlock()
-	for _, u := range users {
-		var unr UserNameRecord
-		if err := b.readJson(u.Hash, &unr); err != nil {
-			log.Printf("couldn't read %s: %s", u.Name, u.Hash)
-		}
-		b.records[unr.PubKey] = unr
+
+	for i, u := range users {
+		go func(username, userid string, count int) {
+			var unr UserNameRecord
+			log.Printf("loading %d %s: %s", count, username, userid)
+			if err := b.readJson(userid, &unr); err != nil {
+				log.Printf("couldn't read %s: %s", username, userid)
+				return
+			}
+			b.lock.Lock()
+			b.records[unr.PubKey] = unr
+			b.lock.Unlock()
+			log.Printf("caching %d, %s: %s", count, username, userid)
+			if err := b.cacheUser(unr.PubKey, 10); err != nil {
+				log.Printf("failed to cache %s", unr.PubKey)
+			}
+		}(u.Name, u.Hash, i)
 	}
 }
 
@@ -349,4 +364,37 @@ func (b *IpfsBackend) GetPosts(user User, count int) ([]Post, error) {
 	}
 	//log.Printf("got %d posts from %s", len(posts), user.PublicName)
 	return posts, nil
+}
+
+//if we do ipld does pinning the user get this for us automatically?
+func (b *IpfsBackend) cacheUser(userid string, count int) error {
+
+	user, err := b.GetUserById(userid)
+	if err != nil {
+		return fmt.Errorf("can't find user %s: %w", userid, err)
+	}
+	head := user.LastPost
+	var posts, images int
+	for i := 0; head != "" && i < count; i++ {
+		var post Post
+		if err := b.readJson(head, &post); err != nil {
+			return fmt.Errorf("can't resolve content %s: %w", head, err)
+		}
+		posts += 1
+		head = post.Previous
+		for _, cid := range post.Images {
+			r, err := b.CatReader(cid)
+			if err != nil {
+				return fmt.Errorf("can't resolve image content %s: %w", cid, err)
+			}
+			_, err = ioutil.ReadAll(r)
+			if err != nil {
+				return fmt.Errorf("can't resolve image content %s: %w", cid, err)
+			}
+			images += 1
+
+		}
+	}
+	defer log.Printf("got %d posts, %d images from %s", posts, images, user.PublicName)
+	return nil
 }
