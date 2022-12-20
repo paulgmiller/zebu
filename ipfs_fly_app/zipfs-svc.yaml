@@ -1,2 +1,28 @@
-NAME    TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
-zipfs   ClusterIP   10.0.230.57   <none>        5001/TCP   12s
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: "2022-11-22T22:37:54Z"
+  labels:
+    app: zipfs
+  name: zipfs
+  namespace: default
+  resourceVersion: "95932"
+  uid: 396b80d0-2611-478a-a29e-99a7abc03df5
+spec:
+  clusterIP: 10.0.230.57
+  clusterIPs:
+  - 10.0.230.57
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: 5001-5001
+    port: 5001
+    protocol: TCP
+    targetPort: 5001
+  selector:
+    app: zipfs
+  sessionAffinity: None
+  type: ClusterIP
+
