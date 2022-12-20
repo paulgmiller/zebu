@@ -96,6 +96,8 @@ func (b *IpfsBackend) RandomUsers(n int) []string {
 }
 
 func (b *IpfsBackend) Healthz() bool {
+	b.lock.RLock()
+	b.lock.Unlock()
 	return b.shell.IsUp()
 }
 
@@ -185,7 +187,7 @@ func (b *IpfsBackend) republishRecords(ctx context.Context) {
 				if err := b.shell.PubSubPublish(centraltopic, json); err != nil {
 					log.Printf("failed to publish to %s, %s", usertopic, err)
 				}
-				if b.shell.PubSubPublish(usertopic, json); err != nil {
+				if err := b.shell.PubSubPublish(usertopic, json); err != nil {
 					log.Printf("failed to publish to %s, %s", usertopic, err)
 				}
 			}
@@ -328,7 +330,7 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 	if err := b.shell.PubSubPublish(centraltopic, ujson); err != nil {
 		return err
 	}
-	if b.shell.PubSubPublish(usertopic, ujson); err != nil {
+	if err := b.shell.PubSubPublish(usertopic, ujson); err != nil {
 		return err
 	}
 

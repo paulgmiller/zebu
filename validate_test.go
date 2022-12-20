@@ -77,7 +77,7 @@ func TestSigning(t *testing.T) {
 		Sequence: 6,
 		PubKey:   crypto.PubkeyToAddress(key.PublicKey).Hex(),
 	}
-	unr.Sign(key)
+	err = unr.Sign(key)
 	if err != nil {
 		t.Fatal(err)
 	}

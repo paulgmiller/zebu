@@ -71,7 +71,11 @@ func serve(backend Backend) {
 		}
 		//can't get lenth without buf.
 		buf := &bytes.Buffer{}
-		buf.ReadFrom(imgreader)
+		_, err = buf.ReadFrom(imgreader)
+		if err != nil {
+			errorPage(err, c)
+			return
+		}
 
 		c.DataFromReader(http.StatusOK, int64(buf.Len()), "image/*", buf, map[string]string{})
 	})

@@ -11,9 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ipfs/go-dnslink"
-	ens "github.com/wealdtech/go-ens/v3"
 )
 
 //other options https://eth.link/
@@ -74,7 +72,7 @@ func parsEthLink(body io.ReadCloser) (string, error) {
 //https://github.com/cpacia/ens-lite seems ideally but go get fails
 //maybe because  github.com/ethereum/go-ethereum/contracts/ens moved to
 // use https://github.com/wealdtech/go-ens/tree/master/contracts instead
-
+/*
 func ResolveEns(ensdomain string) {
 	//obviusly need a light client but
 	ethendpoint := os.Getenv("ETHENDPOINT")
@@ -100,15 +98,15 @@ func ResolveEns(ensdomain string) {
 	fmt.Printf("Content hash of %s is %s\n", ensdomain, readablehash)
 
 	//usercid, err := ipfsShell.Resolve(*resolve)
-	/*
-		link, err := dnslink.Resolve(*ensdomain)
-		if err != nil {
-			fmt.Println(err.Error())
-		} else {
-			fmt.Println(link)
-		}
-	*/
-}
+	//
+	//	link, err := dnslink.Resolve(*ensdomain)
+ //		if err != nil {
+//			fmt.Println(err.Error())
+//		} else {
+//			fmt.Println(link)
+//	}
+
+}*/
 
 func RegisterDNS(displayname, publicname string) (string, error) {
 	//see if this is already
