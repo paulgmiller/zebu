@@ -86,9 +86,9 @@ func serve(backend Backend) {
 }
 
 func home(backend Backend, c *gin.Context) {
-	users := backend.RandomUsers(2)
+	users := backend.RandomUsers(3)
 	log.Printf("getting random users %v", users)
-	posts := []FetchedPost{}
+	homeposts := []FetchedPost{}
 	for _, u := range users {
 		user, err := backend.GetUserById(u)
 		if err != nil {
@@ -97,15 +97,23 @@ func home(backend Backend, c *gin.Context) {
 		}
 		log.Printf("got user %s", user.DisplayName)
 
-		posts, err = userPosts(backend, user)
+		posts, err := userPosts(backend, user, 3)
 		if err != nil {
 			errorPage(err, c)
 			return
 		}
-
+		homeposts = append(homeposts, posts...)
 	}
+	sortposts(homeposts)
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts": posts,
+		"Posts": homeposts,
+	})
+}
+
+//sort by create time. users could lie abotu time but trust for now
+func sortposts(posts []FetchedPost) {
+	sort.Slice(posts, func(i, j int) bool {
+		return posts[i].Created.After(posts[j].Created)
 	})
 }
 
@@ -164,8 +172,7 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 			AuthorPublicName: me.PublicName,
 		})
 	}
-	//users could lie abotu time but trust for now
-	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
+	sortposts(followedposts)
 	name := me.DisplayName
 	if name == "" {
 		name = me.PublicName
@@ -209,7 +216,7 @@ func userpage(backend Backend, c *gin.Context) {
 		return
 	}
 
-	userposts, err := userPosts(backend, user)
+	userposts, err := userPosts(backend, user, 10)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -222,9 +229,9 @@ func userpage(backend Backend, c *gin.Context) {
 	})
 }
 
-func userPosts(backend Backend, user User) ([]FetchedPost, error) {
+func userPosts(backend Backend, user User, count int) ([]FetchedPost, error) {
 	var userposts []FetchedPost
-	posts, err := backend.GetPosts(user, 10)
+	posts, err := backend.GetPosts(user, count)
 	if err != nil {
 		return nil, err
 	}

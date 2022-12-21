@@ -96,8 +96,14 @@ func (b *IpfsBackend) RandomUsers(n int) []string {
 }
 
 func (b *IpfsBackend) Healthz() bool {
-	b.lock.RLock()
-	b.lock.Unlock()
+	//b.lock.RLock()
+	//
+	if !b.lock.TryRLock() {
+		log.Printf("lock was held %+v", b.lock)
+	} else {
+		b.lock.RUnlock()
+	}
+
 	return b.shell.IsUp()
 }
 
@@ -274,8 +280,8 @@ func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 	//but to start use ResolveEthLink/ https://eth.link/
 
 	b.lock.RLock()
-	defer b.lock.RUnlock()
 	userrecord, found := b.records[userid]
+	b.lock.RUnlock()
 	if !found {
 		return User{PublicName: userid}, nil //bad idea. too late!
 	}
@@ -290,8 +296,8 @@ func (b *IpfsBackend) SaveUserCid(user User) (UserNameRecord, error) {
 		return UserNameRecord{}, err
 	}
 	b.lock.RLock()
-	defer b.lock.RUnlock()
 	existing := b.records[user.PublicName]
+	b.lock.RUnlock()
 	existing.Sequence += 1
 	existing.PubKey = user.PublicName //just in case there was no existing
 	existing.CID = cid
