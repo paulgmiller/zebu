@@ -96,7 +96,7 @@ func home(backend Backend, c *gin.Context) {
 			return
 		}
 		log.Printf("got user %s", user.DisplayName)
-
+		http.ListenAndServe(":8080", nil)
 		posts, err := userPosts(backend, user, 3)
 		if err != nil {
 			errorPage(err, c)
@@ -119,6 +119,7 @@ func sortposts(posts []FetchedPost) {
 
 //show what a user is following rahter than their posts.
 func userfeed(backend Backend, c *gin.Context, account string) {
+
 	me, err := backend.GetUserById(account)
 	if err != nil {
 		errorPage(err, c)
@@ -194,18 +195,35 @@ type simpleuser struct {
 }
 
 func userpage(backend Backend, c *gin.Context) {
+
 	var simpleUser simpleuser
 	if err := c.ShouldBindUri(&simpleUser); err != nil {
 		errorPage(err, c)
 		return
 	}
 
-	if simpleUser.Id == "" {
+	account := simpleUser.Id
+	if account == "" {
 		//this didn't work
 		errorPage(fmt.Errorf("no user supplied"), c)
 		return
 	}
-	user, err := backend.GetUserById(simpleUser.Id)
+
+	log.Printf("looking up %s", account)
+
+	//where is the best place to do this conistently.
+	if !strings.HasPrefix(account, "0x") {
+
+		var err error
+		account, err = ResolveDns(account)
+		if err != nil {
+			errorPage(err, c)
+			return
+		}
+		log.Printf("resolved to %s", account)
+	}
+
+	user, err := backend.GetUserById(account)
 	if err != nil {
 		errorPage(err, c)
 		return

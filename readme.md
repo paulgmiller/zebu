@@ -42,7 +42,9 @@ persistent volumes
 nitter has rss feeds. Let people 
 https://nitter.net/about
 
-## e2e test.
+## e2e test. !!!
+
+## parallize fetching.
 
 ## better homepage
 
