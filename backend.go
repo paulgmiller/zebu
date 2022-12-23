@@ -29,10 +29,9 @@ type Backend interface {
 }
 
 type UserBackend interface {
-	GetUserById(usercid string) (User, error)
-	PublishUser(UserNameRecord) error
-	//GetUserId() string
-	SaveUserCid(user User) (UserNameRecord, error)
+	GetUserById(ctx context.Context, usercid string) (User, error)
+	PublishUser(ctx context.Context, unr UserNameRecord) error
+	SaveUserCid(ctx context.Context, user User) (UserNameRecord, error)
 }
 
 type Healthz interface {
@@ -40,13 +39,14 @@ type Healthz interface {
 }
 
 type ContentBackend interface {
-	GetPosts(user User, count int) ([]Post, error)
-	SavePost(post Post) (string, error)
-	//too low level?
-	Cat(cid string) (string, error) //remove with helper method.
-	CatReader(cid string) (io.ReadCloser, error)
-	Add(r io.Reader) (string, error)
+	GetPosts(ctx context.Context, user User, count int) ([]Post, error)
+	SavePost(ctx context.Context, post Post) (string, error)
+	//too low level? used for images currently
+	Cat(ctx context.Context, cid string) (io.ReadCloser, error)
+	Add(ctx context.Context, r io.Reader) (string, error)
 }
+
+var _ Backend = &IpfsBackend{}
 
 type IpfsBackend struct {
 	//content
@@ -180,6 +180,20 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 	return nil
 }
 
+func CatString(ctx context.Context, b ContentBackend, cidr string) (string, error) {
+
+	r, err := b.Cat(ctx, cidr)
+	if err != nil {
+		return "", err
+	}
+	builder := &strings.Builder{}
+	if _, err = io.Copy(builder, r); err != nil {
+		return "", err
+	}
+	return builder.String(), nil
+
+}
+
 func (b *IpfsBackend) republishRecords(ctx context.Context) {
 
 	go func() {
@@ -288,13 +302,11 @@ func (b *IpfsBackend) writeJson(obj interface{}) (string, error) {
 	return path.Cid().String(), nil
 }
 
-func (b *IpfsBackend) SavePost(post Post) (string, error) {
+func (b *IpfsBackend) SavePost(ctx context.Context, post Post) (string, error) {
 	return b.writeJson(&post)
 }
 
-func (b *IpfsBackend) CatReader(cidstr string) (io.ReadCloser, error) {
-	//ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
-	//defer cancel()
+func (b *IpfsBackend) Cat(ctx context.Context, cidstr string) (io.ReadCloser, error) {
 	cid, err := cidlib.Parse(cidstr)
 	if err != nil {
 		return nil, err
@@ -311,18 +323,7 @@ func (b *IpfsBackend) CatReader(cidstr string) (io.ReadCloser, error) {
 	return f, err
 }
 
-func (b *IpfsBackend) Cat(cidstr string) (string, error) {
-	r, err := b.CatReader(cidstr)
-	bytes, err := ioutil.ReadAll(r)
-	if err != nil {
-		return "", fmt.Errorf("can't get content %s: %w", cidstr, err)
-	}
-	return string(bytes), nil
-}
-
-func (b *IpfsBackend) Add(r io.Reader) (string, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-	defer cancel()
+func (b *IpfsBackend) Add(ctx context.Context, r io.Reader) (string, error) {
 	path, err := b.api.Unixfs().Add(ctx, files.NewReaderFile(r))
 	if err != nil {
 		return "", err
@@ -330,12 +331,12 @@ func (b *IpfsBackend) Add(r io.Reader) (string, error) {
 	return path.Cid().String(), nil
 }
 
-func AddString(backend Backend, content string) (string, error) {
-	return backend.Add(strings.NewReader(content))
+func AddString(ctx context.Context, backend Backend, content string) (string, error) {
+	return backend.Add(ctx, strings.NewReader(content))
 }
 
 //so a user id could be ens/dns/or ethereum public key
-func (b *IpfsBackend) GetUserById(userid string) (User, error) {
+func (b *IpfsBackend) GetUserById(ctx context.Context, userid string) (User, error) {
 
 	//todo resolve ens address https://github.com/wealdtech/go-ens and infura
 	//but to start use ResolveEthLink/ https://eth.link/
@@ -353,7 +354,7 @@ func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 	return user, err
 }
 
-func (b *IpfsBackend) SaveUserCid(user User) (UserNameRecord, error) {
+func (b *IpfsBackend) SaveUserCid(ctx context.Context, user User) (UserNameRecord, error) {
 	cid, err := b.writeJson(&user)
 	if err != nil {
 		return UserNameRecord{}, err
@@ -368,7 +369,7 @@ func (b *IpfsBackend) SaveUserCid(user User) (UserNameRecord, error) {
 	return existing, nil
 }
 
-func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
+func (b *IpfsBackend) PublishUser(ctx context.Context, u UserNameRecord) error {
 	if !u.Validate() {
 		return fmt.Errorf("Invalid user %v", u)
 	}
@@ -389,8 +390,6 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 	}
 	usertopic := centraltopic + "/" + u.PubKey
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-	defer cancel()
 	//if _, err := b.api.Unixfs().Add(ctx, files.NewBytesFile(ujsonbytes)); err != nil {
 	//if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
 	if err = os.WriteFile("users/"+string(u.PubKey), ujsonbytes, 0600); err != nil {
@@ -411,7 +410,7 @@ func (b *IpfsBackend) PublishUser(u UserNameRecord) error {
 }
 
 //offset
-func (b *IpfsBackend) GetPosts(user User, count int) ([]Post, error) {
+func (b *IpfsBackend) GetPosts(ctx context.Context, user User, count int) ([]Post, error) {
 	head := user.LastPost
 	var posts []Post
 	for i := 0; head != "" && i < count; i++ {

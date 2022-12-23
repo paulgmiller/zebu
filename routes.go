@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"log"
@@ -64,7 +65,7 @@ func serve(backend Backend) {
 	})
 	router.GET("/img/:cidr", func(c *gin.Context) {
 		cidr := c.Param("cidr")
-		imgreader, err := backend.CatReader(cidr)
+		imgreader, err := backend.Cat(c.Request.Context(), cidr)
 		if err != nil {
 			errorPage(err, c)
 			return
@@ -89,15 +90,15 @@ func home(backend Backend, c *gin.Context) {
 	users := backend.RandomUsers(3)
 	log.Printf("getting random users %v", users)
 	homeposts := []FetchedPost{}
+	ctx := c.Request.Context()
 	for _, u := range users {
-		log.Printf("getting user %s", u)
-		user, err := backend.GetUserById(u)
+		user, err := backend.GetUserById(ctx, u)
 		if err != nil {
 			errorPage(err, c)
 			return
 		}
 		log.Printf("got user %s", user.DisplayName)
-		posts, err := userPosts(backend, user, 3)
+		posts, err := userPosts(ctx, backend, user, 3)
 		if err != nil {
 			errorPage(err, c)
 			return
@@ -119,8 +120,8 @@ func sortposts(posts []FetchedPost) {
 
 //show what a user is following rahter than their posts.
 func userfeed(backend Backend, c *gin.Context, account string) {
-
-	me, err := backend.GetUserById(account)
+	ctx := c.Request.Context()
+	me, err := backend.GetUserById(ctx, account)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -128,18 +129,18 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 	log.Printf("got user %v", me)
 	var followedposts []FetchedPost
 	for _, follow := range me.Follows {
-		f, err := backend.GetUserById(follow)
+		f, err := backend.GetUserById(ctx, follow)
 		if err != nil {
 			errorPage(err, c)
 			return
 		}
-		posts, err := backend.GetPosts(f, 10)
+		posts, err := backend.GetPosts(ctx, f, 10)
 		if err != nil {
 			errorPage(err, c)
 			return
 		}
 		for _, p := range posts {
-			content, err := backend.Cat(p.Content)
+			content, err := CatString(ctx, backend, p.Content)
 			if err != nil {
 				errorPage(err, c)
 				return
@@ -153,7 +154,9 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 			})
 		}
 	}
-	mine, err := backend.GetPosts(me, 1)
+
+	//show them random users if they have no one to follow?
+	mine, err := backend.GetPosts(ctx, me, 1)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -161,7 +164,7 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 
 	if len(mine) > 0 {
 		p := mine[0]
-		content, err := backend.Cat(p.Content)
+		content, err := CatString(ctx, backend, p.Content)
 		if err != nil {
 			errorPage(err, c)
 			return
@@ -195,6 +198,7 @@ type simpleuser struct {
 }
 
 func userpage(backend Backend, c *gin.Context) {
+	ctx := c.Request.Context()
 
 	var simpleUser simpleuser
 	if err := c.ShouldBindUri(&simpleUser); err != nil {
@@ -219,7 +223,7 @@ func userpage(backend Backend, c *gin.Context) {
 	}
 	log.Printf("resolved to %s", account)
 
-	user, err := backend.GetUserById(account)
+	user, err := backend.GetUserById(ctx, account)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -230,7 +234,7 @@ func userpage(backend Backend, c *gin.Context) {
 		return
 	}
 
-	userposts, err := userPosts(backend, user, 10)
+	userposts, err := userPosts(ctx, backend, user, 10)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -243,15 +247,15 @@ func userpage(backend Backend, c *gin.Context) {
 	})
 }
 
-func userPosts(backend Backend, user User, count int) ([]FetchedPost, error) {
+func userPosts(ctx context.Context, backend Backend, user User, count int) ([]FetchedPost, error) {
 	var userposts []FetchedPost
-	posts, err := backend.GetPosts(user, count)
+	posts, err := backend.GetPosts(ctx, user, count)
 	if err != nil {
 		return nil, err
 	}
 	log.Printf("got %d posts for user %s", len(posts), user.DisplayName)
 	for _, p := range posts {
-		content, err := backend.Cat(p.Content)
+		content, err := CatString(ctx, backend, p.Content)
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +277,7 @@ func sign(backend UserBackend, c *gin.Context) {
 		return
 	}
 	log.Printf("signed unr %s", unr.PubKey)
-	err = backend.PublishUser(unr)
+	err = backend.PublishUser(c.Request.Context(), unr)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -282,7 +286,7 @@ func sign(backend UserBackend, c *gin.Context) {
 }
 
 func acceptPost(backend Backend, c *gin.Context) {
-
+	ctx := c.Request.Context()
 	form, err := c.MultipartForm()
 	if err != nil {
 		errorPage(err, c)
@@ -291,7 +295,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 
 	log.Printf("got post %v", form)
 
-	poster, err := backend.GetUserById(form.Value["account"][0])
+	poster, err := backend.GetUserById(ctx, form.Value["account"][0])
 	if err != nil {
 		return
 	}
@@ -305,7 +309,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 			errorPage(err, c)
 			return
 		}
-		cidr, err := backend.Add(f)
+		cidr, err := backend.Add(ctx, f)
 		if err != nil {
 			errorPage(err, c)
 			return
@@ -316,7 +320,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 
 	posttext := form.Value["post"][0]
 
-	cid, err := AddString(backend, posttext)
+	cid, err := AddString(ctx, backend, posttext)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -328,13 +332,13 @@ func acceptPost(backend Backend, c *gin.Context) {
 		Created:  time.Now().UTC(),
 		Images:   imagecidrs,
 	}
-	postcidr, err := backend.SavePost(post)
+	postcidr, err := backend.SavePost(ctx, post)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
 	poster.LastPost = postcidr
-	posterrecord, err := backend.SaveUserCid(poster) //ignoring erros for now
+	posterrecord, err := backend.SaveUserCid(ctx, poster) //ignoring erros for now
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -343,19 +347,20 @@ func acceptPost(backend Backend, c *gin.Context) {
 }
 
 func acceptFollow(backend UserBackend, c *gin.Context) {
+	ctx := c.Request.Context()
 	account, faccount := c.GetPostForm("account")
 	followee, ff := c.GetPostForm("followee")
 	if !ff && !faccount {
 		errorPage(fmt.Errorf("need account and followee"), c)
 	}
 
-	user, err := backend.GetUserById(account)
+	user, err := backend.GetUserById(ctx, account)
 	if err != nil {
 		errorPage(err, c)
 	}
 
 	user.Follow(followee)
-	followrecord, err := backend.SaveUserCid(user)
+	followrecord, err := backend.SaveUserCid(ctx, user)
 	if err != nil {
 		errorPage(err, c)
 	}
@@ -364,13 +369,14 @@ func acceptFollow(backend UserBackend, c *gin.Context) {
 }
 
 func registerDisplayName(backend Backend, c *gin.Context) {
+	ctx := c.Request.Context()
 	account, faccount := c.GetPostForm("account")
 	displayname, ff := c.GetPostForm("register")
 	if !ff && !faccount {
 		errorPage(fmt.Errorf("need account and followee"), c)
 	}
 
-	user, err := backend.GetUserById(account)
+	user, err := backend.GetUserById(ctx, account)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -404,7 +410,7 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 
 	user.DisplayName = displayname
 
-	registerrecord, err := backend.SaveUserCid(user) //ignoring erros for now
+	registerrecord, err := backend.SaveUserCid(ctx, user) //ignoring erros for now
 	if err != nil {
 		errorPage(err, c)
 		return
