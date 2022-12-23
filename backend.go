@@ -293,36 +293,29 @@ func (b *IpfsBackend) SavePost(post Post) (string, error) {
 }
 
 func (b *IpfsBackend) CatReader(cidstr string) (io.ReadCloser, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	//defer cancel()
 	cid, err := cidlib.Parse(cidstr)
 	if err != nil {
 		return nil, err
 	}
-
-	reader, err := b.api.Block().Get(ctx, path.IpfsPath(cid))
-
-	return io.NopCloser(reader), err
-}
-
-func (b *IpfsBackend) Cat(cidstr string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-	defer cancel()
-	cid, err := cidlib.Parse(cidstr)
+	entry, err := b.api.Unixfs().Get(context.TODO(), path.IpfsPath(cid))
 	if err != nil {
-		return "", err
-	}
-	entry, err := b.api.Unixfs().Get(ctx, path.IpfsPath(cid))
-	if err != nil {
-		return "", fmt.Errorf("faild to get object %s, %w", path.IpfsPath(cid), err)
+		return nil, fmt.Errorf("faild to get object %s, %w", path.IpfsPath(cid), err)
 	}
 	f := files.ToFile(entry)
 	if f == nil {
-		return "", fmt.Errorf("%s not a file", cidstr)
+		return nil, fmt.Errorf("%s not a file", cidstr)
 	}
-	bytes, err := ioutil.ReadAll(f)
+
+	return f, err
+}
+
+func (b *IpfsBackend) Cat(cidstr string) (string, error) {
+	r, err := b.CatReader(cidstr)
+	bytes, err := ioutil.ReadAll(r)
 	if err != nil {
-		return "", fmt.Errorf("can't get content %s: %w", cid, err)
+		return "", fmt.Errorf("can't get content %s: %w", cidstr, err)
 	}
 	return string(bytes), nil
 }
