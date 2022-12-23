@@ -387,6 +387,7 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 	}
 
 	if currentaddress == account {
+		//save user cidr in case it was an eth name?
 		c.Status(http.StatusNotModified)
 		return
 	}
