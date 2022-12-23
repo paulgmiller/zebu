@@ -212,16 +212,12 @@ func userpage(backend Backend, c *gin.Context) {
 	log.Printf("looking up %s", account)
 
 	//where is the best place to do this conistently.
-	if !strings.HasPrefix(account, "0x") {
-
-		var err error
-		account, err = ResolveDns(account)
-		if err != nil {
-			errorPage(err, c)
-			return
-		}
-		log.Printf("resolved to %s", account)
+	account, err := Resolve(account)
+	if err != nil {
+		errorPage(err, c)
+		return
 	}
+	log.Printf("resolved to %s", account)
 
 	user, err := backend.GetUserById(account)
 	if err != nil {
@@ -380,7 +376,7 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 		return
 	}
 
-	currentaddress, err := ResolveDns(displayname)
+	currentaddress, err := Resolve(displayname)
 	if err != nil && err != DNSNotFound {
 		errorPage(err, c)
 		return

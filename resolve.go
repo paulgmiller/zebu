@@ -29,17 +29,13 @@ import (
   }
 */
 
-type txtRecord struct {
-	Data string `json:"data"`
-}
-
 //https://github.com/cpacia/ens-lite seems ideally but go get fails
 //maybe because  github.com/ethereum/go-ethereum/contracts/ens moved to
 // use https://github.com/wealdtech/go-ens/tree/master/contracts instead
 
 var NoEthEndpoint = errors.New("ETHENDPOINT not defined")
 
-func ResolveEns(ensdomain string) (string, error) {
+func resolveEns(ensdomain string) (string, error) {
 	//obviusly need a light client but
 	ethendpoint := os.Getenv("ETHENDPOINT")
 	if ethendpoint == "" {
@@ -100,9 +96,10 @@ func RegisterDNS(displayname, publicname string) (string, error) {
 
 const legacyipnsprefix = "/ipns"
 
-var DNSNotFound = fmt.Errorf("DNSNOTFOUND")
+var DNSNotFound = errors.New("DNSNOTFOUND")
 
-func ResolveDns(dnsname string) (string, error) {
+//looksup dnslionk subdomains  and pulls out /zebu or /ipfs (legacy) TXT records
+func resolveDns(dnsname string) (string, error) {
 	txts, err := net.LookupTXT("_dnslink." + dnsname)
 	if err != nil {
 		log.Printf("failed to find _dnslink." + dnsname)
@@ -134,4 +131,20 @@ func ResolveDns(dnsname string) (string, error) {
 	}
 	log.Printf("link %s didn't match prefixes", link)
 	return "", DNSNotFound
+}
+
+//resolves tries a couple strategy to resolve a user to an eth acccount
+func Resolve(id string) (string, error) {
+
+	//nothing to do here.
+	if strings.HasPrefix(id, "0x") {
+		return id, nil
+	}
+
+	//add some caching?
+	if strings.HasSuffix(id, ".eth") {
+		return resolveEns(id)
+	}
+	//fall back to dns last.
+	return resolveDns(id)
 }
