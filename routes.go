@@ -96,7 +96,6 @@ func home(backend Backend, c *gin.Context) {
 			return
 		}
 		log.Printf("got user %s", user.DisplayName)
-		http.ListenAndServe(":8080", nil)
 		posts, err := userPosts(backend, user, 3)
 		if err != nil {
 			errorPage(err, c)
@@ -387,7 +386,7 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 	}
 
 	if currentaddress == account {
-		//save user cidr in case it was an eth name?
+		//save user cidr in case it was an eth name?go
 		c.Status(http.StatusNotModified)
 		return
 	}

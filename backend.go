@@ -96,14 +96,6 @@ func (b *IpfsBackend) RandomUsers(n int) []string {
 }
 
 func (b *IpfsBackend) Healthz() bool {
-	//b.lock.RLock()
-	//
-	if !b.lock.TryRLock() {
-		log.Printf("lock was held %+v", b.lock)
-	} else {
-		b.lock.RUnlock()
-	}
-
 	return b.shell.IsUp()
 }
 
