@@ -85,7 +85,7 @@ func (b *IpfsBackend) RandomUsers(n int) []string {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 	users := []string{}
-	for k, _ := range b.records {
+	for k := range b.records {
 		if n <= 0 {
 			break
 		}
