@@ -71,7 +71,11 @@ func serve(backend Backend) {
 		}
 		//can't get lenth without buf.
 		buf := &bytes.Buffer{}
-		buf.ReadFrom(imgreader)
+		_, err = buf.ReadFrom(imgreader)
+		if err != nil {
+			errorPage(err, c)
+			return
+		}
 
 		c.DataFromReader(http.StatusOK, int64(buf.Len()), "image/*", buf, map[string]string{})
 	})
@@ -82,31 +86,40 @@ func serve(backend Backend) {
 }
 
 func home(backend Backend, c *gin.Context) {
-	users := backend.RandomUsers(2)
+	users := backend.RandomUsers(3)
 	log.Printf("getting random users %v", users)
-	posts := []FetchedPost{}
+	homeposts := []FetchedPost{}
 	for _, u := range users {
+		log.Printf("getting user %s", u)
 		user, err := backend.GetUserById(u)
 		if err != nil {
 			errorPage(err, c)
 			return
 		}
 		log.Printf("got user %s", user.DisplayName)
-
-		posts, err = userPosts(backend, user)
+		posts, err := userPosts(backend, user, 3)
 		if err != nil {
 			errorPage(err, c)
 			return
 		}
-
+		homeposts = append(homeposts, posts...)
 	}
+	sortposts(homeposts)
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts": posts,
+		"Posts": homeposts,
+	})
+}
+
+//sort by create time. users could lie abotu time but trust for now
+func sortposts(posts []FetchedPost) {
+	sort.Slice(posts, func(i, j int) bool {
+		return posts[i].Created.After(posts[j].Created)
 	})
 }
 
 //show what a user is following rahter than their posts.
 func userfeed(backend Backend, c *gin.Context, account string) {
+
 	me, err := backend.GetUserById(account)
 	if err != nil {
 		errorPage(err, c)
@@ -160,8 +173,7 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 			AuthorPublicName: me.PublicName,
 		})
 	}
-	//users could lie abotu time but trust for now
-	sort.Slice(followedposts, func(i, j int) bool { return followedposts[i].Created.After(followedposts[j].Created) })
+	sortposts(followedposts)
 	name := me.DisplayName
 	if name == "" {
 		name = me.PublicName
@@ -183,18 +195,31 @@ type simpleuser struct {
 }
 
 func userpage(backend Backend, c *gin.Context) {
+
 	var simpleUser simpleuser
 	if err := c.ShouldBindUri(&simpleUser); err != nil {
 		errorPage(err, c)
 		return
 	}
 
-	if simpleUser.Id == "" {
+	account := simpleUser.Id
+	if account == "" {
 		//this didn't work
 		errorPage(fmt.Errorf("no user supplied"), c)
 		return
 	}
-	user, err := backend.GetUserById(simpleUser.Id)
+
+	log.Printf("looking up %s", account)
+
+	//where is the best place to do this conistently.
+	account, err := Resolve(account)
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+	log.Printf("resolved to %s", account)
+
+	user, err := backend.GetUserById(account)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -205,7 +230,7 @@ func userpage(backend Backend, c *gin.Context) {
 		return
 	}
 
-	userposts, err := userPosts(backend, user)
+	userposts, err := userPosts(backend, user, 10)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -218,9 +243,9 @@ func userpage(backend Backend, c *gin.Context) {
 	})
 }
 
-func userPosts(backend Backend, user User) ([]FetchedPost, error) {
+func userPosts(backend Backend, user User, count int) ([]FetchedPost, error) {
 	var userposts []FetchedPost
-	posts, err := backend.GetPosts(user, 10)
+	posts, err := backend.GetPosts(user, count)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +376,7 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 		return
 	}
 
-	currentaddress, err := ResolveDns(displayname)
+	currentaddress, err := Resolve(displayname)
 	if err != nil && err != DNSNotFound {
 		errorPage(err, c)
 		return
@@ -362,6 +387,7 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 	}
 
 	if currentaddress == account {
+		//save user cidr in case it was an eth name?go
 		c.Status(http.StatusNotModified)
 		return
 	}

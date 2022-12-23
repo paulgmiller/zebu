@@ -3,24 +3,18 @@ Evolved from this
 https://paulgmiller.github.io/2021/02/07/Distributed-Twitter.html
 
 
-## People to follow.
-Still need to implment ENS. (dns txt entries might work? )
-paul miller k51qzi5uqu5dhy7ghgmb0tedml0hw453vqaqo7tt3pl1koprzfwkgpf0ag6icj
-
-
-## Releases
-
-## Related to ens l2
-https://eips.ethereum.org/EIPS/eip-3668
-https://discuss.ens.domains/t/layer-2-scaling-and-subdomains/6286/10
-https://github.com/ensdomains/ens-contracts/tree/master/contracts/wrapper
 
 ## TODO 
-### better image galleries.
+
+### UI 
+* Limit posts with option to see more
+* fix date formatting
+* better image galleries.
 https://galleriajs.github.io/themes/
 https://www.liwen.id.au/heg/
 
-### Embend ipfs?
+### Embed ipfs?
+Or use infura / web3.storage for hosted version
 
 ## move to new ipfs api
 https://github.com/ipfs/go-ipfs-http-client
@@ -30,22 +24,29 @@ gets us timeouts for not found
 ### ENS  and dns integration
 https://github.com/web3/web3.js/issues/2683
 let them register after connect
-import uses names
+
 
 ### protect against spam. 
+Look at addreses account balance integral  of period 
 
 ## scale ipfs
 loadbalancer with different ports
 persistent volumes
 
 ## run importer
-nitter has rss feeds. Let people 
+Run as a cron job on regular basis
+nitter has rss feeds. Let people follow people on twitter that way? 
 https://nitter.net/about
 
-## e2e test.
+## e2e test. !!!
+* Create a new account
+* register a dns name
 
-## better homepage
+## parallize fetching.
 
-## mirror northbriton traffic to web3.storage
+## what is the bester homepage
+* suggest people to follow? G
+* show random posts? Dangerousq
+
 
 ## retweets and likes

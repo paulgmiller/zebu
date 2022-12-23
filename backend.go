@@ -15,6 +15,7 @@ import (
 	"time"
 
 	cidlib "github.com/ipfs/go-cid"
+	files "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/multiformats/go-multiaddr"
@@ -96,7 +97,7 @@ func (b *IpfsBackend) RandomUsers(n int) []string {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 	users := []string{}
-	for k, _ := range b.records {
+	for k := range b.records {
 		if n <= 0 {
 			break
 		}
@@ -147,7 +148,7 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 			//would msg.sequence number replace
 			unr := &UserNameRecord{}
 			if err = json.Unmarshal(msg.Data(), unr); err != nil {
-				log.Printf("unserializable message %v", msg.Data)
+				log.Printf("unserializable message %v", msg.Data())
 				continue
 			}
 
@@ -166,11 +167,7 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 					b.records[unr.PubKey] = *unr
 					usertopic := centraltopic + "/" + string(unr.PubKey)
 					//if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
-
 					//b.api doesn't have mutable files yet.
-					//if _, err := b.api.Unixfs().Add(ctx, files.NewBytesFile(msg.Data())); err != nil {
-					//	log.Printf("failed to save %s", unr.PubKey)
-					//}
 					err = os.WriteFile("users/"+string(unr.PubKey), msg.Data(), 0600)
 					if err != nil {
 						log.Printf("failed to save %s", unr.PubKey)
@@ -261,11 +258,17 @@ func (b *IpfsBackend) readJson(cidstr string, obj interface{}) error {
 		return fmt.Errorf("faild to parse cidr %w", err)
 	}
 
-	o, err := b.api.Object().Get(ctx, path.IpfsPath(cid))
+	entry, err := b.api.Unixfs().Get(ctx, path.IpfsPath(cid))
 	if err != nil {
 		return fmt.Errorf("faild to get object %s, %w", path.IpfsPath(cid), err)
 	}
-	dec := json.NewDecoder(bytes.NewReader(o.RawData()))
+	f := files.ToFile(entry)
+	if f == nil {
+		return fmt.Errorf("%s not a file", cidstr)
+	}
+
+	defer f.Close()
+	dec := json.NewDecoder(f)
 	return dec.Decode(obj)
 }
 
@@ -276,14 +279,13 @@ func (b *IpfsBackend) writeJson(obj interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//return b.shell.Add(&buf)
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
-	block, err := b.api.Block().Put(ctx, bytes.NewReader(buf.Bytes()))
+	path, err := b.api.Unixfs().Add(ctx, files.NewBytesFile(buf.Bytes()))
 	if err != nil {
 		return "", err
 	}
-	return block.Path().Cid().String(), nil
+	return path.Cid().String(), nil
 }
 
 func (b *IpfsBackend) SavePost(post Post) (string, error) {
@@ -299,6 +301,7 @@ func (b *IpfsBackend) CatReader(cidstr string) (io.ReadCloser, error) {
 	}
 
 	reader, err := b.api.Block().Get(ctx, path.IpfsPath(cid))
+
 	return io.NopCloser(reader), err
 }
 
@@ -309,11 +312,15 @@ func (b *IpfsBackend) Cat(cidstr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	contentreader, err := b.api.Block().Get(ctx, path.IpfsPath(cid))
+	entry, err := b.api.Unixfs().Get(ctx, path.IpfsPath(cid))
 	if err != nil {
-		return "", fmt.Errorf("can't get content %s: %w", cid, err)
+		return "", fmt.Errorf("faild to get object %s, %w", path.IpfsPath(cid), err)
 	}
-	bytes, err := ioutil.ReadAll(contentreader)
+	f := files.ToFile(entry)
+	if f == nil {
+		return "", fmt.Errorf("%s not a file", cidstr)
+	}
+	bytes, err := ioutil.ReadAll(f)
 	if err != nil {
 		return "", fmt.Errorf("can't get content %s: %w", cid, err)
 	}
@@ -323,11 +330,11 @@ func (b *IpfsBackend) Cat(cidstr string) (string, error) {
 func (b *IpfsBackend) Add(r io.Reader) (string, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
-	block, err := b.api.Block().Put(ctx, r)
+	path, err := b.api.Unixfs().Add(ctx, files.NewReaderFile(r))
 	if err != nil {
 		return "", err
 	}
-	return block.Path().Cid().String(), nil
+	return path.Cid().String(), nil
 }
 
 func AddString(backend Backend, content string) (string, error) {
@@ -341,8 +348,8 @@ func (b *IpfsBackend) GetUserById(userid string) (User, error) {
 	//but to start use ResolveEthLink/ https://eth.link/
 
 	b.lock.RLock()
-	defer b.lock.RUnlock()
 	userrecord, found := b.records[userid]
+	b.lock.RUnlock()
 	if !found {
 		return User{PublicName: userid}, nil //bad idea. too late!
 	}
@@ -359,8 +366,8 @@ func (b *IpfsBackend) SaveUserCid(user User) (UserNameRecord, error) {
 		return UserNameRecord{}, err
 	}
 	b.lock.RLock()
-	defer b.lock.RUnlock()
 	existing := b.records[user.PublicName]
+	b.lock.RUnlock()
 	existing.Sequence += 1
 	existing.PubKey = user.PublicName //just in case there was no existing
 	existing.CID = cid

@@ -16,7 +16,7 @@ func main() {
 	ctx := context.Background()
 
 	if *resolve != nobody {
-		hash, err := ResolveEthLink(*resolve)
+		hash, err := Resolve(*resolve)
 		if err != nil {
 			panic(err)
 		}

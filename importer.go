@@ -148,6 +148,8 @@ func publishWithKey(author User, b UserBackend, privatekey *ecdsa.PrivateKey) er
 	return nil
 }
 
+//TODO https://blog.acolyer.org/feed/ (the morning paper) doesn't seem to parse right.
+
 func Crawl(xmlurl string, author User, b Backend) (string, error) {
 	log.Printf("fetching %s", xmlurl)
 	fp := gofeed.NewParser()
