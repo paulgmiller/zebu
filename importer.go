@@ -71,7 +71,7 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 			}
 
 			addr := crypto.PubkeyToAddress(privatekey.PublicKey).Hex()
-			author, err := b.GetUserById(addr)
+			author, err := b.GetUserById(ctx, addr)
 			if err != nil {
 				log.Println(err.Error())
 				continue
@@ -97,13 +97,13 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 			go func(url string) {
 				defer wg.Done()
 				log.Printf("crawling %s, %s", u.Host, url)
-				post, err := Crawl(url, author, b)
+				post, err := Crawl(ctx, url, author, b)
 				if err != nil {
 					log.Println(err.Error())
 					return
 				}
 				author.LastPost = post
-				err = publishWithKey(author, b, privatekey)
+				err = publishWithKey(ctx, author, b, privatekey)
 				if err != nil {
 					log.Println(err.Error())
 					return
@@ -128,8 +128,8 @@ func simplifyTitle(title string) string {
 	return b.String()
 }
 
-func publishWithKey(author User, b UserBackend, privatekey *ecdsa.PrivateKey) error {
-	unr, err := b.SaveUserCid(author) //not blocking yet.
+func publishWithKey(ctx context.Context, author User, b UserBackend, privatekey *ecdsa.PrivateKey) error {
+	unr, err := b.SaveUserCid(ctx, author) //not blocking yet.
 	if err != nil {
 		return fmt.Errorf("could not save %v, %w", author, err)
 	}
@@ -141,7 +141,7 @@ func publishWithKey(author User, b UserBackend, privatekey *ecdsa.PrivateKey) er
 	if !unr.Validate() {
 		return fmt.Errorf("coul not validate  %v", unr)
 	}
-	err = b.PublishUser(unr)
+	err = b.PublishUser(ctx, unr)
 	if err != nil {
 		return fmt.Errorf("couln't publish %v, %w", unr, err)
 	}
@@ -150,7 +150,7 @@ func publishWithKey(author User, b UserBackend, privatekey *ecdsa.PrivateKey) er
 
 //TODO https://blog.acolyer.org/feed/ (the morning paper) doesn't seem to parse right.
 
-func Crawl(xmlurl string, author User, b Backend) (string, error) {
+func Crawl(ctx context.Context, xmlurl string, author User, b Backend) (string, error) {
 	log.Printf("fetching %s", xmlurl)
 	fp := gofeed.NewParser()
 	fp.UserAgent = "github.com/paulgmiller/zebu"
@@ -159,7 +159,7 @@ func Crawl(xmlurl string, author User, b Backend) (string, error) {
 		return "", fmt.Errorf("%s fetching %s", err, xmlurl)
 	}
 
-	exisitngposts, err := b.GetPosts(author, 10)
+	exisitngposts, err := b.GetPosts(ctx, author, 10)
 	if err != nil {
 		return "", fmt.Errorf("%s parsing %s", err, xmlurl)
 	}
@@ -184,7 +184,7 @@ func Crawl(xmlurl string, author User, b Backend) (string, error) {
 			}
 		}
 
-		cid, err := AddString(b, item.Title+"<br/>"+item.Description)
+		cid, err := AddString(ctx, b, item.Title+"<br/>"+item.Description)
 		if err != nil {
 			log.Printf("error adding content: %s", err)
 			return "", err
@@ -199,7 +199,7 @@ func Crawl(xmlurl string, author User, b Backend) (string, error) {
 				Created:  time,
 			}
 		}
-		previous, err = b.SavePost(post)
+		previous, err = b.SavePost(ctx, post)
 		if err != nil {
 			log.Printf("error saving post: %s", err)
 			return "", err
