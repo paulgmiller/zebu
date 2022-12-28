@@ -126,7 +126,6 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 		errorPage(err, c)
 		return
 	}
-	log.Printf("got user %v", me)
 	var followedposts []FetchedPost
 	for _, follow := range me.Follows {
 		f, err := backend.GetUserById(ctx, follow)
