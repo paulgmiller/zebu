@@ -23,7 +23,7 @@ spec:
         app: zebu
     spec:
       containers:
-      - image: paulgmiller/zebu:d55a142
+      - image: paulgmiller/zebu:e01b693
         name: zebu
         resources: 
           requests:
@@ -36,7 +36,7 @@ spec:
         terminationMessagePolicy: File
         env:
         - name: "IPFS_SERVER"
-          value : "zipfs:5001"
+          value : "/dns4/zipfs/tcp/5001/"
         readinessProbe:
           httpGet:
             path: /healthz

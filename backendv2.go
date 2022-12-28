@@ -19,6 +19,8 @@ import (
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	"github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/multiformats/go-multiaddr"
+
+	ipfs "github.com/ipfs/go-ipfs-api"
 )
 
 type Backend interface {
@@ -50,8 +52,8 @@ var _ Backend = &IpfsBackend{}
 
 type IpfsBackend struct {
 	//content
-	//shell *ipfs.Shell
-	api *httpapi.HttpApi
+	shell *ipfs.Shell
+	api   *httpapi.HttpApi
 
 	//pubsub caching layer.
 	lock         sync.RWMutex
@@ -68,13 +70,22 @@ func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 
 	//https: //github.com/ipfs/kubo/tree/master/docs/examples/kubo-as-a-library
 
-	ipsaddr, err := multiaddr.NewMultiaddr(ipfsserver)
+	ipfsaddr, err := multiaddr.NewMultiaddr(ipfsserver)
 	if err != nil {
 		log.Fatalf("failed to parse %s", ipfsserver)
 	}
-	ipfsapi, err := httpapi.NewApi(ipsaddr)
+	ipfsapi, err := httpapi.NewApi(ipfsaddr)
 	if err != nil {
 		log.Fatalf("failed to start api  %s", err)
+	}
+
+	//multiaddr can't do this for us? oh well hoping to get rid of shell. if we find a replacement for mutable file system.
+	parts := strings.Split(ipfsserver, "/")
+
+	junk := fmt.Sprintf("%s:%s", parts[2], parts[4])
+	shell := ipfs.NewShell(junk)
+	if !shell.IsUp() {
+		log.Fatalf("failed to start shell api with %s", junk)
 	}
 
 	hr, err := ipfsapi.Unixfs().Add(ctx, files.NewBytesFile([]byte("healthz")))
@@ -86,6 +97,7 @@ func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 		api:          ipfsapi,
 		records:      map[string]UserNameRecord{},
 		healthrecord: hr,
+		shell:        shell,
 	}
 
 	log.Print("loading records")
@@ -171,10 +183,7 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 					log.Printf("update is new %s", unr.PubKey)
 					b.records[unr.PubKey] = *unr
 					usertopic := centraltopic + "/" + string(unr.PubKey)
-					//if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(msg.Data), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
-					//b.api doesn't have mutable files yet.
-					err = os.WriteFile("users/"+string(unr.PubKey), msg.Data(), 0600)
-					if err != nil {
+					if err := b.shell.FilesWrite(ctx, usertopic, bytes.NewReader(msg.Data()), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
 						log.Printf("failed to save %s", unr.PubKey)
 					}
 					log.Printf("wrote to %s", usertopic)
@@ -207,22 +216,23 @@ func (b *IpfsBackend) republishRecords(ctx context.Context) {
 				break
 			}
 
-			files, err := ioutil.ReadDir("users")
+			users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
 			if err != nil {
+				//fatal seems harsh. dip down readiness probe?
 				log.Fatalf("could't list user storage: %s", err)
 			}
-			//users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
-			if err != nil {
-				log.Fatalf("could't list user storage: %s", err)
-			}
-			for _, f := range files {
+			for _, f := range users {
 
-				bytes, err := ioutil.ReadFile("users/" + f.Name())
+				reader, err := b.Cat(ctx, f.Hash)
 				if err != nil {
-					log.Fatalf("could't read user %s: %s", f.Name(), err)
+					log.Printf("failed to read %s,%s", f.Name, f.Hash)
+				}
+				bytes, err := ioutil.ReadAll(reader)
+				if err != nil {
+					log.Printf("failed to read %s,%s", f.Name, f.Hash)
 				}
 
-				usertopic := centraltopic + "/" + f.Name()
+				usertopic := centraltopic + "/" + f.Name
 
 				//so to start with we'll publish everythig to one path to make everthing findable. Eventually that will explode
 				if err := b.api.PubSub().Publish(ctx, centraltopic, bytes); err != nil {
@@ -245,25 +255,24 @@ func (b *IpfsBackend) loadRecords(ctx context.Context) {
 		}
 	}
 
-	//users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
-	files, err := os.ReadDir("users")
+	users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
 	if err != nil {
+		//fatal seems harsh. dip down readiness probe?
 		log.Fatalf("could't list user storage: %s", err)
 	}
-	//users, err := b.api.Unixfs().Ls(ctx, path.New(centraltopic))
-	log.Printf("got %d users", len(files))
+	log.Printf("got %d users", len(users))
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	for _, f := range files {
-		var unr UserNameRecord
-		f.Info()
-		bytes, err := ioutil.ReadFile("users/" + f.Name())
+	for _, f := range users {
+
+		reader, err := b.Cat(ctx, f.Hash)
 		if err != nil {
-			log.Fatalf("could't read user %s: %s", f.Name(), err)
+			log.Printf("failed to read %s,%s", f.Name, f.Hash)
 		}
-		err = json.Unmarshal(bytes, &unr)
+		var unr UserNameRecord
+		err = json.NewDecoder(reader).Decode(&unr)
 		if err != nil {
-			log.Fatalf("could't read user %s: %s", f.Name(), err)
+			log.Fatalf("could't read user %s: %s", f.Name, err)
 		}
 		b.records[unr.PubKey] = unr
 	}
@@ -353,9 +362,7 @@ func (b *IpfsBackend) GetUserById(ctx context.Context, userid string) (User, err
 		return User{PublicName: userid}, nil //bad idea. too late!
 	}
 	var user User
-	fmt.Printf("reading json for %s ", userrecord.CID)
 	err := b.readJson(userrecord.CID, &user)
-	fmt.Printf("go error %s", err)
 	return user, err
 }
 

@@ -7,9 +7,14 @@ require (
 	github.com/ethereum/go-ethereum v1.10.20
 	github.com/gilliek/go-opml v1.0.0
 	github.com/gin-gonic/gin v1.7.1
+	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-dnslink v0.0.0-20200504100233-0626e50cfeaf
 	github.com/ipfs/go-ipfs-api v0.3.0
+	github.com/ipfs/go-ipfs-files v0.1.1
+	github.com/ipfs/go-ipfs-http-client v0.4.0
+	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/mmcdole/gofeed v1.1.3
+	github.com/multiformats/go-multiaddr v0.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/wealdtech/go-ens/v3 v3.4.5
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
@@ -39,14 +44,11 @@ require (
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-block-format v0.0.3 // indirect
 	github.com/ipfs/go-blockservice v0.3.0 // indirect
-	github.com/ipfs/go-cid v0.1.0 // indirect
 	github.com/ipfs/go-datastore v0.5.0 // indirect
 	github.com/ipfs/go-ipfs-blockstore v1.2.0 // indirect
 	github.com/ipfs/go-ipfs-cmds v0.7.0 // indirect
 	github.com/ipfs/go-ipfs-ds-help v1.1.0 // indirect
 	github.com/ipfs/go-ipfs-exchange-interface v0.1.0 // indirect
-	github.com/ipfs/go-ipfs-files v0.1.1 // indirect
-	github.com/ipfs/go-ipfs-http-client v0.4.0 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
 	github.com/ipfs/go-ipld-cbor v0.0.5 // indirect
 	github.com/ipfs/go-ipld-format v0.4.0 // indirect
@@ -58,7 +60,6 @@ require (
 	github.com/ipfs/go-path v0.3.0 // indirect
 	github.com/ipfs/go-unixfs v0.3.1 // indirect
 	github.com/ipfs/go-verifcid v0.0.1 // indirect
-	github.com/ipfs/interface-go-ipfs-core v0.7.0 // indirect
 	github.com/ipld/go-codec-dagpb v1.3.0 // indirect
 	github.com/ipld/go-ipld-prime v0.11.0 // indirect
 	github.com/jbenet/go-is-domain v1.0.5 // indirect
@@ -80,7 +81,6 @@ require (
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base32 v0.0.3 // indirect
 	github.com/multiformats/go-base36 v0.1.0 // indirect
-	github.com/multiformats/go-multiaddr v0.5.0 // indirect
 	github.com/multiformats/go-multibase v0.0.3 // indirect
 	github.com/multiformats/go-multicodec v0.4.1 // indirect
 	github.com/multiformats/go-multihash v0.1.0 // indirect
