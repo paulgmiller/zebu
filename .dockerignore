@@ -1,0 +1,12 @@
+#scripts
+build.sh
+Dockerfile
+
+#deploy
+*.yaml
+*.toml
+
+northbriton/
+ipfs_fly_app/
+test/
+users/
