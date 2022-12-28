@@ -46,7 +46,7 @@ func serve(backend Backend) {
 	})
 
 	router.GET("/healthz", func(c *gin.Context) {
-		if !backend.Healthz() {
+		if !backend.Healthz(c.Request.Context()) {
 			errorPage(fmt.Errorf("ipfs isn't up"), c)
 		}
 		c.Status(200)
@@ -126,7 +126,6 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 		errorPage(err, c)
 		return
 	}
-	log.Printf("got user %v", me)
 	var followedposts []FetchedPost
 	for _, follow := range me.Follows {
 		f, err := backend.GetUserById(ctx, follow)
