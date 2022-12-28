@@ -54,8 +54,9 @@ type IpfsBackend struct {
 	api *httpapi.HttpApi
 
 	//pubsub caching layer.
-	lock    sync.RWMutex
-	records map[string]UserNameRecord
+	lock         sync.RWMutex
+	records      map[string]UserNameRecord
+	healthrecord path.Path
 }
 
 func NewIpfsBackend(ctx context.Context) *IpfsBackend {
@@ -66,10 +67,6 @@ func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 	}
 
 	//https: //github.com/ipfs/kubo/tree/master/docs/examples/kubo-as-a-library
-	/*shell := ipfs.NewShell(ipfsserver)
-	if !shell.IsUp() {
-		log.Fatal("Ipfs not fond on localhost:5001 please install https://docs.ipfs.io/install/command-line/#official-distributions")
-	}*/
 
 	ipsaddr, err := multiaddr.NewMultiaddr(ipfsserver)
 	if err != nil {
@@ -77,9 +74,15 @@ func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 	}
 	ipfsapi, err := httpapi.NewApi(ipsaddr)
 
+	hr, err := ipfsapi.Unixfs().Add(ctx, files.NewBytesFile([]byte("healthz")))
+	if err != nil {
+		log.Fatalf("failed to store healthz %s", err)
+	}
+
 	backend := &IpfsBackend{
-		api:     ipfsapi,
-		records: map[string]UserNameRecord{},
+		api:          ipfsapi,
+		records:      map[string]UserNameRecord{},
+		healthrecord: hr,
 	}
 
 	log.Print("loading records")
@@ -108,10 +111,9 @@ func (b *IpfsBackend) RandomUsers(n int) []string {
 }
 
 func (b *IpfsBackend) Healthz(ctx context.Context) bool {
-	//was .shell.IsUp(). Maybe should get a know block instead?
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
-	_, err := b.api.Block().Get(ctx, path.New("/ipfs/QmZfrSV2wLUm36Ycn8s9NrUJDN1NHfCYKcxZL8Kv7bjoFJ"))
+	_, err := b.api.Unixfs().Get(ctx, b.healthrecord)
 	return err == nil
 }
 
