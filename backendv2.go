@@ -73,6 +73,9 @@ func NewIpfsBackend(ctx context.Context) *IpfsBackend {
 		log.Fatalf("failed to parse %s", ipfsserver)
 	}
 	ipfsapi, err := httpapi.NewApi(ipsaddr)
+	if err != nil {
+		log.Fatalf("failed to start api  %s", err)
+	}
 
 	hr, err := ipfsapi.Unixfs().Add(ctx, files.NewBytesFile([]byte("healthz")))
 	if err != nil {
