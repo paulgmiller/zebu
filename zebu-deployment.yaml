@@ -23,7 +23,7 @@ spec:
         app: zebu
     spec:
       containers:
-      - image: paulgmiller/zebu:e01b693
+      - image: paulgmiller/zebu:dd20210
         name: zebu
         resources: 
           requests:
@@ -37,6 +37,11 @@ spec:
         env:
         - name: "IPFS_SERVER"
           value : "/dns4/zipfs/tcp/5001/"
+        - name : ETHENDPOINT
+          valueFrom:
+            secretKeyRef:
+              key: ethendpoint
+              name: infura
         readinessProbe:
           httpGet:
             path: /healthz
