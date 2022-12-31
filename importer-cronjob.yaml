@@ -4,18 +4,19 @@ metadata:
   name: importer
   namespace: default
 spec:
-  concurrencyPolicy: Allow
+  concurrencyPolicy: Forbid
   failedJobsHistoryLimit: 1
   jobTemplate:
     metadata:
       name: importer
     spec:
+      ttlSecondsAfterFinished: 120000
       template:
         spec:
           containers:
-          - image: paulgmiller/zebu:8ee2e38
+          - image: paulgmiller/zebu:c23a4a3
             imagePullPolicy: IfNotPresent
-            args: ["-import", "/opml/paul.yaml"]
+            args: ["-import", "/opml/paul.opml"]
             name: importer
             resources: {}
             terminationMessagePath: /dev/termination-log
@@ -28,7 +29,7 @@ spec:
               mountPath: /opml/
               readOnly: true
             - name: importkeys
-              mountPath: import_keys/
+              mountPath: /import_keys/
               readOnly: false #new secrets get written in?
           dnsPolicy: ClusterFirst
           restartPolicy: OnFailure
@@ -42,7 +43,7 @@ spec:
           - name: importkeys
             secret:
               secretName: importkeys
-  schedule: '*/10 * * * *'
+  schedule: '* */4 * * *'
   successfulJobsHistoryLimit: 3
   suspend: false
 

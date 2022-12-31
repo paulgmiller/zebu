@@ -70,8 +70,21 @@ func resolveEns(ensdomain string) (string, error) {
 }
 
 func RegisterDNS(displayname, publicname string) (string, error) {
-	//see if this is already
-	//take this env var? turn off on non prod
+	fqdn := displayname + ".northbriton.net"
+	current, err := resolveDns(fqdn)
+	if err == nil {
+		if current == publicname {
+			log.Printf("%s already registered to %s", displayname, publicname)
+			return fqdn, nil
+		}
+		return "", fmt.Errorf("name %s already registered to %s instead of %s", displayname, current, publicname)
+	}
+
+	if err != DNSNotFound {
+		return "", err
+	}
+
+	//turn off on non prod
 	endpoint, ok := os.LookupEnv("REGISTERENDPOINT")
 	if !ok {
 		endpoint = "northbriton"
