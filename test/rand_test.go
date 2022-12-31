@@ -77,3 +77,26 @@ func TestRand(t *testing.T) {
 	}
 
 }
+
+func TestUserAccount(t *testing.T) {
+
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint()+"/user/"+account, nil)
+	must(err, t, "req")
+	req.Header.Set("Accept", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	must(err, t, "do")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("bad status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	must(err, t, "read")
+	fmt.Println(string(body))
+	var result PageResult
+	err = json.Unmarshal(body, &result)
+	//err = json.NewDecoder(resp.Body).Decode(resp.Body)
+	must(err, t, "decode")
+	if len(result.Posts) < 3 {
+		t.Fatalf("too few posts %d", len(result.Posts))
+	}
+}
