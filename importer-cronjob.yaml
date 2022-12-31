@@ -15,11 +15,14 @@ spec:
           containers:
           - image: paulgmiller/zebu:8ee2e38
             imagePullPolicy: IfNotPresent
-            args: ["-import ", "/opml/paul.yaml"]
+            args: ["-import", "/opml/paul.yaml"]
             name: importer
             resources: {}
             terminationMessagePath: /dev/termination-log
             terminationMessagePolicy: File
+            env:
+            - name: "IPFS_SERVER"
+              value : "/dns4/zipfs/tcp/5001/"
             volumeMounts:
             - name: opml
               mountPath: /opml/

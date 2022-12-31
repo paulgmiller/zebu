@@ -33,6 +33,7 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 	b := zebu.NewIpfsBackend(ctx)
 
 	if _, err := os.Stat(importskeypath); errors.Is(err, os.ErrNotExist) {
+		log.Printf("making import keys directory %s", importskeypath)
 		if err := os.Mkdir(importskeypath, os.ModePerm); err != nil {
 			return nil, err
 		}
@@ -60,6 +61,7 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 					log.Printf("load of key failed %s", err)
 					continue
 				}
+				log.Printf("generating key for %s", feed.XMLURL)
 				privatekey, err = crypto.GenerateKey()
 				if err != nil {
 					log.Println(err.Error())
