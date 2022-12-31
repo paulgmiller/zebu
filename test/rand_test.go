@@ -4,33 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
 	"net/http"
 	"os"
+	"paulgmiller/zebu/zebu"
 	"testing"
-	"time"
 )
 
 const account = "0xCbd6073f486714E6641bf87c22A9CEc25aCf5804"
 
-//zebu needs to move out of main package.
-type Post struct {
-	Previous string
-	Content  string
-	Images   []string  //this makes it hard to do images inline? don't care?
-	Created  time.Time //can't actually trust this
-}
-
-type FetchedPost struct {
-	Post
-	RenderedContent  template.HTML
-	Author           string
-	AuthorPublicName string
-}
-
 type PageResult struct {
-	Posts          []FetchedPost
+	Posts          []zebu.FetchedPost
 	UserId         string
 	UserPublicName string
 }

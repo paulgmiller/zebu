@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"paulgmiller/zebu/zebu"
 	"strings"
 	"sync"
 
@@ -29,7 +30,7 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 	if err != nil {
 		return importedusers, err
 	}
-	b := NewIpfsBackend(ctx)
+	b := zebu.NewIpfsBackend(ctx)
 
 	if _, err := os.Stat(importskeypath); errors.Is(err, os.ErrNotExist) {
 		if err := os.Mkdir(importskeypath, os.ModePerm); err != nil {
@@ -84,7 +85,7 @@ func Import(ctx context.Context, opmplpath string) ([]string, error) {
 			if author.DisplayName == "" {
 
 				//resolve dns?
-				dp, err := RegisterDNS(simplifyTitle(feed.Title), addr)
+				dp, err := zebu.RegisterDNS(simplifyTitle(feed.Title), addr)
 				if err != nil {
 					log.Println(err.Error())
 					continue
@@ -128,7 +129,7 @@ func simplifyTitle(title string) string {
 	return b.String()
 }
 
-func publishWithKey(ctx context.Context, author User, b UserBackend, privatekey *ecdsa.PrivateKey) error {
+func publishWithKey(ctx context.Context, author zebu.User, b zebu.UserBackend, privatekey *ecdsa.PrivateKey) error {
 	unr, err := b.SaveUserCid(ctx, author) //not blocking yet.
 	if err != nil {
 		return fmt.Errorf("could not save %v, %w", author, err)
@@ -150,7 +151,7 @@ func publishWithKey(ctx context.Context, author User, b UserBackend, privatekey 
 
 //TODO https://blog.acolyer.org/feed/ (the morning paper) doesn't seem to parse right.
 
-func Crawl(ctx context.Context, xmlurl string, author User, b Backend) (string, error) {
+func Crawl(ctx context.Context, xmlurl string, author zebu.User, b zebu.Backend) (string, error) {
 	log.Printf("fetching %s", xmlurl)
 	fp := gofeed.NewParser()
 	fp.UserAgent = "github.com/paulgmiller/zebu"
@@ -164,7 +165,7 @@ func Crawl(ctx context.Context, xmlurl string, author User, b Backend) (string, 
 		return "", fmt.Errorf("%s parsing %s", err, xmlurl)
 	}
 
-	oldposts := map[string]Post{}
+	oldposts := map[string]zebu.Post{}
 	for _, p := range exisitngposts {
 		oldposts[p.Content] = p
 	}
@@ -184,16 +185,16 @@ func Crawl(ctx context.Context, xmlurl string, author User, b Backend) (string, 
 			}
 		}
 
-		cid, err := AddString(ctx, b, item.Title+"<br/>"+item.Description)
+		cid, err := zebu.AddString(ctx, b, item.Title+"<br/>"+item.Description)
 		if err != nil {
 			log.Printf("error adding content: %s", err)
 			return "", err
 		}
-		var post Post
+		var post zebu.Post
 		if oldpost, found := oldposts[cid]; found {
 			post = oldpost //stop doing this once we have one that doesn't match so an edit doesn't delete things?
 		} else {
-			post = Post{
+			post = zebu.Post{
 				Previous: previous,
 				Content:  cid,
 				Created:  time,

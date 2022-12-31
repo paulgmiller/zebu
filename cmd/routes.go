@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"paulgmiller/zebu/zebu"
 	"sort"
 	"strings"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func serve(backend Backend) {
+func serve(backend zebu.Backend) {
 	router := gin.New()
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{"/healthz"}}), gin.Recovery())
 
@@ -88,10 +89,10 @@ func serve(backend Backend) {
 
 var defaultOffered = []string{"text/html", "application/json"}
 
-func rand(backend Backend, c *gin.Context) {
+func rand(backend zebu.Backend, c *gin.Context) {
 	users := backend.RandomUsers(3)
 	log.Printf("getting random users %v", users)
-	randposts := []FetchedPost{}
+	randposts := []zebu.FetchedPost{}
 	ctx := c.Request.Context()
 	for _, u := range users {
 		posts, _, err := userPosts(ctx, backend, u, 3)
@@ -112,21 +113,21 @@ func rand(backend Backend, c *gin.Context) {
 }
 
 //sort by create time. users could lie abotu time but trust for now
-func sortposts(posts []FetchedPost) {
+func sortposts(posts []zebu.FetchedPost) {
 	sort.Slice(posts, func(i, j int) bool {
 		return posts[i].Created.After(posts[j].Created)
 	})
 }
 
 //show what a user is following rahter than their posts.
-func userfeed(backend Backend, c *gin.Context, account string) {
+func userfeed(backend zebu.Backend, c *gin.Context, account string) {
 	ctx := c.Request.Context()
 	me, err := backend.GetUserById(ctx, account)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
-	var followedposts []FetchedPost
+	var followedposts []zebu.FetchedPost
 	for _, follow := range me.Follows {
 		posts, _, err := userPosts(ctx, backend, follow, 10)
 		if err != nil {
@@ -165,7 +166,7 @@ type simpleuser struct {
 	Id string `uri:"id" binding:"required"`
 }
 
-func userpage(backend Backend, c *gin.Context) {
+func userpage(backend zebu.Backend, c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var simpleUser simpleuser
@@ -184,7 +185,7 @@ func userpage(backend Backend, c *gin.Context) {
 	log.Printf("looking up %s", account)
 
 	//where is the best place to do this conistently.
-	account, err := Resolve(account)
+	account, err := zebu.Resolve(account)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -207,25 +208,25 @@ func userpage(backend Backend, c *gin.Context) {
 		HTMLName: "index.tmpl"})
 }
 
-func userPosts(ctx context.Context, backend Backend, account string, count int) ([]FetchedPost, User, error) {
+func userPosts(ctx context.Context, backend zebu.Backend, account string, count int) ([]zebu.FetchedPost, zebu.User, error) {
 
 	user, err := backend.GetUserById(ctx, account)
 	if err != nil {
-		return nil, User{}, err
+		return nil, zebu.User{}, err
 	}
 
-	var userposts []FetchedPost
+	var userposts []zebu.FetchedPost
 	posts, err := backend.GetPosts(ctx, user, count)
 	if err != nil {
 		return nil, user, err
 	}
 	log.Printf("got %d posts for user %s", len(posts), user.DisplayName)
 	for _, p := range posts {
-		content, err := CatString(ctx, backend, p.Content)
+		content, err := zebu.CatString(ctx, backend, p.Content)
 		if err != nil {
 			return nil, user, err
 		}
-		userposts = append(userposts, FetchedPost{
+		userposts = append(userposts, zebu.FetchedPost{
 			Post:             p,
 			RenderedContent:  template.HTML(content),
 			Author:           user.DisplayName,
@@ -235,8 +236,8 @@ func userPosts(ctx context.Context, backend Backend, account string, count int) 
 	return userposts, user, nil
 }
 
-func sign(backend UserBackend, c *gin.Context) {
-	var unr UserNameRecord
+func sign(backend zebu.UserBackend, c *gin.Context) {
+	var unr zebu.UserNameRecord
 	err := c.BindJSON(&unr)
 	if err != nil {
 		errorPage(err, c)
@@ -251,7 +252,7 @@ func sign(backend UserBackend, c *gin.Context) {
 	c.Status(200)
 }
 
-func acceptPost(backend Backend, c *gin.Context) {
+func acceptPost(backend zebu.Backend, c *gin.Context) {
 	ctx := c.Request.Context()
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -286,13 +287,13 @@ func acceptPost(backend Backend, c *gin.Context) {
 
 	posttext := form.Value["post"][0]
 
-	cid, err := AddString(ctx, backend, posttext)
+	cid, err := zebu.AddString(ctx, backend, posttext)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
 
-	post := Post{
+	post := zebu.Post{
 		Previous: poster.LastPost,
 		Content:  cid,
 		Created:  time.Now().UTC(),
@@ -312,7 +313,7 @@ func acceptPost(backend Backend, c *gin.Context) {
 	c.JSON(200, posterrecord)
 }
 
-func acceptFollow(backend UserBackend, c *gin.Context) {
+func acceptFollow(backend zebu.UserBackend, c *gin.Context) {
 	ctx := c.Request.Context()
 	account, faccount := c.GetPostForm("account")
 	followee, ff := c.GetPostForm("followee")
@@ -320,7 +321,7 @@ func acceptFollow(backend UserBackend, c *gin.Context) {
 		errorPage(fmt.Errorf("need account and followee"), c)
 	}
 
-	account, err := Resolve(account)
+	account, err := zebu.Resolve(account)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -340,7 +341,7 @@ func acceptFollow(backend UserBackend, c *gin.Context) {
 	c.JSON(200, followrecord)
 }
 
-func registerDisplayName(backend Backend, c *gin.Context) {
+func registerDisplayName(backend zebu.Backend, c *gin.Context) {
 	ctx := c.Request.Context()
 	account, faccount := c.GetPostForm("account")
 	displayname, ff := c.GetPostForm("register")
@@ -354,12 +355,12 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 		return
 	}
 
-	currentaddress, err := Resolve(displayname)
-	if err != nil && err != DNSNotFound {
+	currentaddress, err := zebu.Resolve(displayname)
+	if err != nil && err != zebu.DNSNotFound {
 		errorPage(err, c)
 		return
 	}
-	if err != DNSNotFound && currentaddress != account {
+	if err != zebu.DNSNotFound && currentaddress != account {
 		errorPage(fmt.Errorf("that dns already belongs to %s", currentaddress), c)
 		return
 	}
@@ -373,7 +374,7 @@ func registerDisplayName(backend Backend, c *gin.Context) {
 	displayname = strings.TrimSpace(displayname)
 	log.Printf("regisering %s->%s", account, displayname)
 	//validate valida dns host? https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names rfc 1123
-	displayname, err = RegisterDNS(displayname, account)
+	displayname, err = zebu.RegisterDNS(displayname, account)
 	if err != nil {
 
 		errorPage(err, c)
