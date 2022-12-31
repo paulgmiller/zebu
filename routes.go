@@ -27,14 +27,14 @@ func serve(backend Backend) {
 	router.GET("/", func(c *gin.Context) {
 		account, err := c.Cookie("zebu_account")
 		if err == http.ErrNoCookie {
-			home(backend, c)
+			rand(backend, c)
 			return
 		}
 		userfeed(backend, c, account)
 	})
 
 	router.GET("/rand", func(c *gin.Context) {
-		home(backend, c)
+		rand(backend, c)
 	})
 
 	router.POST("/post", func(c *gin.Context) {
@@ -86,28 +86,22 @@ func serve(backend Backend) {
 	log.Print(router.Run(":9000").Error())
 }
 
-func home(backend Backend, c *gin.Context) {
+func rand(backend Backend, c *gin.Context) {
 	users := backend.RandomUsers(3)
 	log.Printf("getting random users %v", users)
-	homeposts := []FetchedPost{}
+	randposts := []FetchedPost{}
 	ctx := c.Request.Context()
 	for _, u := range users {
-		user, err := backend.GetUserById(ctx, u)
+		posts, _, err := userPosts(ctx, backend, u, 3)
 		if err != nil {
 			errorPage(err, c)
 			return
 		}
-		log.Printf("got user %s", user.DisplayName)
-		posts, err := userPosts(ctx, backend, user, 3)
-		if err != nil {
-			errorPage(err, c)
-			return
-		}
-		homeposts = append(homeposts, posts...)
+		randposts = append(randposts, posts...)
 	}
-	sortposts(homeposts)
+	sortposts(randposts)
 	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts": homeposts,
+		"Posts": randposts,
 	})
 }
 
@@ -128,53 +122,17 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 	}
 	var followedposts []FetchedPost
 	for _, follow := range me.Follows {
-		f, err := backend.GetUserById(ctx, follow)
+		posts, _, err := userPosts(ctx, backend, follow, 10)
 		if err != nil {
 			errorPage(err, c)
 			return
 		}
-		posts, err := backend.GetPosts(ctx, f, 10)
-		if err != nil {
-			errorPage(err, c)
-			return
-		}
-		for _, p := range posts {
-			content, err := CatString(ctx, backend, p.Content)
-			if err != nil {
-				errorPage(err, c)
-				return
-			}
-			followedposts = append(followedposts, FetchedPost{
-				Post:             p,
-				RenderedContent:  template.HTML(content),
-				Author:           follow,
-				AuthorPublicName: f.DisplayName,
-				//send up public name too
-			})
-		}
+		followedposts = append(followedposts, posts...)
+
 	}
 
-	//show them random users if they have no one to follow?
-	mine, err := backend.GetPosts(ctx, me, 1)
-	if err != nil {
-		errorPage(err, c)
-		return
-	}
+	//show them random users if they have no one to follow? nah do this on html
 
-	if len(mine) > 0 {
-		p := mine[0]
-		content, err := CatString(ctx, backend, p.Content)
-		if err != nil {
-			errorPage(err, c)
-			return
-		}
-		followedposts = append(followedposts, FetchedPost{
-			Post:             p,
-			RenderedContent:  template.HTML(content),
-			Author:           me.DisplayName,
-			AuthorPublicName: me.PublicName,
-		})
-	}
 	sortposts(followedposts)
 	name := me.DisplayName
 	if name == "" {
@@ -222,18 +180,7 @@ func userpage(backend Backend, c *gin.Context) {
 	}
 	log.Printf("resolved to %s", account)
 
-	user, err := backend.GetUserById(ctx, account)
-	if err != nil {
-		errorPage(err, c)
-		return
-	}
-
-	if c.Query("raw") == "true" {
-		c.IndentedJSON(http.StatusOK, user)
-		return
-	}
-
-	userposts, err := userPosts(ctx, backend, user, 10)
+	userposts, user, err := userPosts(ctx, backend, account, 10)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -246,17 +193,23 @@ func userpage(backend Backend, c *gin.Context) {
 	})
 }
 
-func userPosts(ctx context.Context, backend Backend, user User, count int) ([]FetchedPost, error) {
+func userPosts(ctx context.Context, backend Backend, account string, count int) ([]FetchedPost, User, error) {
+
+	user, err := backend.GetUserById(ctx, account)
+	if err != nil {
+		return nil, User{}, err
+	}
+
 	var userposts []FetchedPost
 	posts, err := backend.GetPosts(ctx, user, count)
 	if err != nil {
-		return nil, err
+		return nil, user, err
 	}
 	log.Printf("got %d posts for user %s", len(posts), user.DisplayName)
 	for _, p := range posts {
 		content, err := CatString(ctx, backend, p.Content)
 		if err != nil {
-			return nil, err
+			return nil, user, err
 		}
 		userposts = append(userposts, FetchedPost{
 			Post:             p,
@@ -265,7 +218,7 @@ func userPosts(ctx context.Context, backend Backend, user User, count int) ([]Fe
 			AuthorPublicName: user.PublicName,
 		})
 	}
-	return userposts, nil
+	return userposts, user, nil
 }
 
 func sign(backend UserBackend, c *gin.Context) {
@@ -351,6 +304,12 @@ func acceptFollow(backend UserBackend, c *gin.Context) {
 	followee, ff := c.GetPostForm("followee")
 	if !ff && !faccount {
 		errorPage(fmt.Errorf("need account and followee"), c)
+	}
+
+	account, err := Resolve(account)
+	if err != nil {
+		errorPage(err, c)
+		return
 	}
 
 	user, err := backend.GetUserById(ctx, account)
