@@ -4,7 +4,7 @@ WORKDIR /build
 ADD go.* /build/
 RUN go mod download
 ADD . /build/
-RUN go build -o /zebu .
+RUN go build -o /zebu ./cmd
 ENTRYPOINT ["/zebu"]
 #FROM alpine
 #RUN adduser -S -D -H -h /app appuser

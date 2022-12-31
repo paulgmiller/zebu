@@ -11,6 +11,7 @@
             <outline type="rss" text="Basic Brewing Radio" title="Basic Brewing Radio" xmlUrl="http://www.basicbrewing.com/radio/radio.rss" htmlUrl="http://www.basicbrewingradio.com"/>
         </outline>
         <outline text="dev" title="dev">
+            <outline type="rss" text="Pointless And Uncaring Universe" title="Pointless And Uncaring Universe" xmlUrl="https://blog.northbriton.net/rss.xml" htmlUrl="https://blog.northbriton.net/"/>
             <outline type="rss" text="Scott Hanselman's Computer Zen" title="Scott Hanselman's Computer Zen" xmlUrl="http://feeds.feedburner.com/ScottHanselman" htmlUrl="https://www.hanselman.com/blog/"/>
             <outline type="rss" text="High Scalability" title="High Scalability" xmlUrl="http://feeds.feedburner.com/HighScalability" htmlUrl="http://highscalability.com/blog/"/>
             <outline type="rss" text="Dare Obasanjo aka Carnage4Life" title="Dare Obasanjo aka Carnage4Life" xmlUrl="http://feeds.feedburner.com/Carnage4life" htmlUrl="http://www.25hoursaday.com/weblog/"/>
