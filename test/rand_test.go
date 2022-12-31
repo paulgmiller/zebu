@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 )
@@ -36,6 +37,9 @@ type PageResult struct {
 
 func endpoint() string {
 	//allow overrideing with env var
+	if e, ok := os.LookupEnv("ZEBU_ENDPOINT"); ok {
+		return e
+	}
 	return "http://localhost:9000"
 }
 
