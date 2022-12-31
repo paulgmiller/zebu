@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: importer
+  namespace: default
+spec:
+  concurrencyPolicy: Allow
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    metadata:
+      name: importer
+    spec:
+      template:
+        spec:
+          containers:
+          - image: paulgmiller/zebu:8ee2e38
+            imagePullPolicy: IfNotPresent
+            args: ["-import ", "/opml/paul.yaml"]
+            name: importer
+            resources: {}
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            volumeMounts:
+            - name: opml
+              mountPath: /opml/
+              readOnly: true
+            - name: importkeys
+              mountPath: import_keys/
+              readOnly: false #new secrets get written in?
+          dnsPolicy: ClusterFirst
+          restartPolicy: OnFailure
+          schedulerName: default-scheduler
+          securityContext: {}
+          terminationGracePeriodSeconds: 30
+          volumes:
+          - name: opml
+            configMap:
+              name: opml
+          - name: importkeys
+            secret:
+              secretName: importkeys
+  schedule: '*/10 * * * *'
+  successfulJobsHistoryLimit: 3
+  suspend: false
+
