@@ -10,3 +10,6 @@ northbriton/
 ipfs_fly_app/
 test/
 users/
+
+.git/
+.github/
