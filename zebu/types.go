@@ -124,5 +124,3 @@ type FetchedPost struct {
 	Author           string
 	AuthorPublicName string
 }
-
-const nobody = "nobody"
