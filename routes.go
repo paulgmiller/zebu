@@ -86,6 +86,8 @@ func serve(backend Backend) {
 	log.Print(router.Run(":9000").Error())
 }
 
+var defaultOffered = []string{"text/html", "application/json"}
+
 func rand(backend Backend, c *gin.Context) {
 	users := backend.RandomUsers(3)
 	log.Printf("getting random users %v", users)
@@ -100,9 +102,13 @@ func rand(backend Backend, c *gin.Context) {
 		randposts = append(randposts, posts...)
 	}
 	sortposts(randposts)
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts": randposts,
-	})
+
+	c.Negotiate(http.StatusOK, gin.Negotiate{
+		Offered: defaultOffered,
+		Data: gin.H{
+			"Posts": randposts,
+		},
+		HTMLName: "index.tmpl"})
 }
 
 //sort by create time. users could lie abotu time but trust for now
@@ -138,11 +144,16 @@ func userfeed(backend Backend, c *gin.Context, account string) {
 	if name == "" {
 		name = me.PublicName
 	}
-	c.HTML(http.StatusOK, "user.tmpl", gin.H{
-		"Posts":          followedposts,
-		"UserId":         account,
-		"UserPublicName": name,
-	})
+
+	c.Negotiate(http.StatusOK, gin.Negotiate{
+		Offered: defaultOffered,
+		Data: gin.H{
+			"Posts":          followedposts,
+			"UserId":         account,
+			"UserPublicName": name,
+		},
+		HTMLName: "user.tmpl"})
+
 }
 
 func errorPage(err error, c *gin.Context) {
@@ -186,11 +197,14 @@ func userpage(backend Backend, c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "index.tmpl", gin.H{
-		"Posts":          userposts,
-		"UserId":         user.DisplayName,
-		"UserPublicName": user.PublicName,
-	})
+	c.Negotiate(http.StatusOK, gin.Negotiate{
+		Offered: defaultOffered,
+		Data: gin.H{
+			"Posts":          userposts,
+			"UserId":         user.DisplayName,
+			"UserPublicName": user.PublicName,
+		},
+		HTMLName: "index.tmpl"})
 }
 
 func userPosts(ctx context.Context, backend Backend, account string, count int) ([]FetchedPost, User, error) {
