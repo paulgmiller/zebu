@@ -14,7 +14,7 @@ spec:
       template:
         spec:
           containers:
-          - image: paulgmiller/zebu:c23a4a3
+          - image: paulgmiller/zebu:0d1d03f
             imagePullPolicy: IfNotPresent
             args: ["-import", "/opml/paul.opml"]
             name: importer

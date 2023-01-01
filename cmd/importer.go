@@ -142,11 +142,11 @@ func publishWithKey(ctx context.Context, author zebu.User, b zebu.UserBackend, p
 	}
 
 	if !unr.Validate() {
-		return fmt.Errorf("coul not validate  %v", unr)
+		return fmt.Errorf("couldn't validate  %v", unr)
 	}
 	err = b.PublishUser(ctx, unr)
 	if err != nil {
-		return fmt.Errorf("couln't publish %v, %w", unr, err)
+		return fmt.Errorf("couldn't publish %v, %w", unr, err)
 	}
 	return nil
 }
@@ -186,8 +186,9 @@ func Crawl(ctx context.Context, xmlurl string, author zebu.User, b zebu.Backend)
 				fmt.Println(err.Error())
 			}
 		}
-
-		cid, err := zebu.AddString(ctx, b, item.Title+"<br/>"+item.Description)
+		//cut off description here or in ux?
+		content := fmt.Sprintf("<a href=\"%s\">%s</a><br/>%s", item.Link, item.Title, item.Description)
+		cid, err := zebu.AddString(ctx, b, content)
 		if err != nil {
 			log.Printf("error adding content: %s", err)
 			return "", err
