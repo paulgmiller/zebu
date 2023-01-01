@@ -5,6 +5,9 @@ https://paulgmiller.github.io/2021/02/07/Distributed-Twitter.html
 
 ## TODO 
 
+## Basics
+simple follow links
+
 ### UI 
 * Limit posts with option to see more
 * fix date formatting
@@ -25,7 +28,6 @@ optionally return imags through cloudflare ipfs gateway
 ## move to new ipfs api
 gets us timeouts for not found
 
-
 ### ENS  and dns integration
 https://github.com/web3/web3.js/issues/2683
 let them register after connect
@@ -36,12 +38,10 @@ Look at addreses account balance integral  of period
 
 
 ## run importer
-Run as a cron job on regular basis
 nitter has rss feeds. Let people follow people on twitter that way? 
 https://nitter.net/about
 
 ## Activity pub integration?
-
 
 ## e2e test. !!!
 * Create a new account
@@ -53,8 +53,8 @@ https://nitter.net/about
 
 ## what is the best homepage
 * suggest people to follow? G
-* show random posts? Dangerousq
+* show random posts? Dangerous?
 
 
 ## retweets and likes
-accumulate seval likes before signing?
+accumulate several likes before signing?
