@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -249,10 +248,8 @@ func (b *IpfsBackend) republishRecords(ctx context.Context) {
 
 func (b *IpfsBackend) loadRecords(ctx context.Context) {
 
-	if _, err := os.Stat("users"); errors.Is(err, os.ErrNotExist) {
-		if err := os.Mkdir("users", os.ModePerm); err != nil {
-			log.Fatalf("couldn't make dir: %s", err)
-		}
+	if err := b.shell.FilesMkdir(ctx, centraltopic, ipfs.FilesMkdir.Parents(true)); err != nil {
+		log.Fatalf("count't init user storage: %s", err)
 	}
 
 	users, err := b.shell.FilesLs(ctx, centraltopic, ipfs.FilesLs.Stat(true))
@@ -403,8 +400,7 @@ func (b *IpfsBackend) PublishUser(ctx context.Context, u UserNameRecord) error {
 	usertopic := centraltopic + "/" + u.PubKey
 
 	//if _, err := b.api.Unixfs().Add(ctx, files.NewBytesFile(ujsonbytes)); err != nil {
-	//if err := b.shell.FilesWrite(context.TODO(), usertopic, bytes.NewReader(ujsonbytes), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
-	if err = os.WriteFile("users/"+string(u.PubKey), ujsonbytes, 0600); err != nil {
+	if err := b.shell.FilesWrite(ctx, usertopic, bytes.NewReader(ujsonbytes), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
 		log.Printf("failed to write to %s, %s", usertopic, err)
 		return err
 	}
