@@ -179,7 +179,7 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 				defer b.lock.Unlock()
 				existing := b.records[unr.PubKey]
 				if unr.Sequence > existing.Sequence {
-					log.Printf("update is new %s", unr.PubKey)
+					log.Printf("update is new %s %d,%d", unr.PubKey, unr.Sequence, existing.Sequence)
 					b.records[unr.PubKey] = *unr
 					usertopic := centraltopic + "/" + string(unr.PubKey)
 					if err := b.shell.FilesWrite(ctx, usertopic, bytes.NewReader(msg.Data()), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {

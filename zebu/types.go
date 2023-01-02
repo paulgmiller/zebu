@@ -92,9 +92,10 @@ func (unr *UserNameRecord) Sign(privatekey *ecdsa.PrivateKey) error {
 	return nil
 }
 
+//todo better names for display and public names that deosn't break back compat
 type User struct {
 	LastPost     string
-	Follows      []string //do we follow dns/ens dispalay names or addresses or keep both?
+	Follows      []string //store ens/dns display names and resolve when needed
 	DisplayName  string   //ens or dns name
 	PublicName   string   //public key
 	ImportSource string   `json:"ImportSource,omitempty"`
