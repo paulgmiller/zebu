@@ -16,12 +16,12 @@
 		<div><a href="/user/{{ .UserPublicName }}">{{ .UserPublicName }}</a></div>
 		<br />
 		<!-- only show if no name is set -->
-		<form onsubmit="saveregister(event)" >
+		<form id="register-form" onsubmit="saveregister(event)" >
 			<textarea name="register" rows="1" cols="64"></textarea>
 			<br/>
 			<input type="submit" value="Register">
 		</form>
-		<form onsubmit="savepost(event)" >
+		<form  id="post-form" onsubmit="savepost(event)" >
 			<textarea id="post-text" name="post" rows="12" cols="100"></textarea>
 			<br/>
 			<input type="file" name="images" accept="image/*" multiple> 
@@ -49,7 +49,12 @@
 			connectBtn.textContent = account
 			if (account.startsWith("0x")) {
 				connectBtn.textContent = account.substr(0, 6) + "..." + account.substr(38)
-			}			
+			} else {
+				document.getElementById('register-form').hidden = true
+			}
+		} else {
+			document.getElementById('post-form').hidden = true
+			document.getElementById('register-form').hidden = true
 		}
 		window.w3 = new Web3(window.ethereum)
 		const savepost = async (event) => {
@@ -86,6 +91,19 @@
 			response = await fetch("/sign", { method: "POST", body: JSON.stringify(data)}  )
 			console.log(response)
 			location.reload()
+		}
+		const connect = async () => {
+			if (window.ethereum) {
+				await window.ethereum.send('eth_requestAccounts');
+				var accounts = await w3.eth.getAccounts();
+				account = accounts[0];			
+				var connectBtn = document.getElementById('connect-btn')
+				document.cookie = "zebu_account=" + account;
+				console.log("set cookie zebu_account=" + account)	
+				location.reload()
+			} else {		
+				alert('MetaMask is not installed!');
+			}
 		}
     </script>
 	</body>
