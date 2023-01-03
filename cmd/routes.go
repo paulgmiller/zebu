@@ -87,6 +87,15 @@ func serve(backend zebu.Backend) {
 	log.Print(router.Run(":9000").Error())
 }
 
+func reader(backend zebu.Backend, c *gin.Context) (zebu.User, error) {
+	account, err := c.Cookie("zebu_account")
+	if err == http.ErrNoCookie {
+		return zebu.User{}, nil // a little wierd
+	}
+	return backend.GetUserById(c.Request.Context(), account)
+
+}
+
 var defaultOffered = []string{"text/html", "application/json"}
 
 func rand(backend zebu.Backend, c *gin.Context) {
@@ -104,10 +113,18 @@ func rand(backend zebu.Backend, c *gin.Context) {
 	}
 	sortposts(randposts)
 
+	reader, err := reader(backend, c)
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+
 	c.Negotiate(http.StatusOK, gin.Negotiate{
 		Offered: defaultOffered,
 		Data: gin.H{
-			"Posts": randposts,
+			"Posts":     randposts,
+			"Reader":    reader.Name(),
+			"ReaderKey": reader.PublicKey(),
 		},
 		HTMLName: "feed.tmpl"})
 }
@@ -149,8 +166,11 @@ func userfeed(backend zebu.Backend, c *gin.Context, account string) {
 	c.Negotiate(http.StatusOK, gin.Negotiate{
 		Offered: defaultOffered,
 		Data: gin.H{
-			"Posts":          followedposts,
-			"UserPublicName": name,
+			"Posts":        followedposts,
+			"Reader":       me.Name(),
+			"ReaderKey":    me.PublicKey(),
+			"FeedOwner":    me.Name(), //allow us to see others feeds by passing this in.
+			"FeedOwnerKey": me.PublicKey(),
 		},
 		HTMLName: "feed.tmpl"})
 
@@ -193,19 +213,15 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 	log.Printf("resolved to %s", account)
 
 	followed := false
-	reader, readerkey := "", ""
-	if myaccount, err := c.Cookie("zebu_account"); err == nil {
-		me, err := backend.GetUserById(ctx, myaccount)
-		if err == nil {
-			reader = me.Name()
-			readerkey = me.PublicKey()
-			log.Printf("seeing if %s is in %v", account, me.Follows)
-			for _, f := range me.Follows {
-				//too expensive for large number of followers? need to cache Resolve.
-				faccount, err := zebu.Resolve(f)
-				if err == nil && faccount == account {
-					followed = true
-				}
+
+	reader, err := reader(backend, c)
+	if err == nil {
+		log.Printf("seeing if %s is in %v", account, reader.Follows)
+		for _, f := range reader.Follows {
+			//too expensive for large number of followers? need to cache Resolve.
+			faccount, err := zebu.Resolve(f)
+			if err == nil && faccount == account {
+				followed = true
 			}
 		}
 	}
@@ -223,8 +239,8 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 			"Author":    author.Name(),
 			"AuthorKey": author.PublicKey(),
 			"Followed":  followed,
-			"Reader":    reader,
-			"ReaderKey": readerkey,
+			"Reader":    reader.Name(),
+			"ReaderKey": reader.PublicKey(),
 		},
 		HTMLName: "userpage.tmpl"})
 }

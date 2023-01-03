@@ -10,7 +10,7 @@
 	    <nav class="navbar navbar-expand-lg navbar-light bg-light">
 			<div class="container">
 				<a class="navbar-brand" href="#">Zebu</a>
-				<button id="connect-btn" class="btn btn-primary" disable=true>{{ .UserPublicName }}</button>
+				<button id="connect-btn" class="btn btn-primary" onclick="connect()">Connect to MetaMask</button>
 			</div>
     	</nav>
 		<div><a href="/user/{{ .UserPublicName }}">{{ .UserPublicName }}</a></div>
@@ -42,7 +42,15 @@
         {{end}}
 		<!-- credit view-source:https://shobhitic.github.io/ethsign/ -->
 		<script type="text/javascript">
-		var account = "{{ .UserPublicName }}"
+		var account = "{{ .Reader }}";
+		if (account != "") {
+			var connectBtn = document.getElementById('connect-btn')
+			connectBtn.disabled = true
+			connectBtn.textContent = account
+			if (account.startsWith("0x")) {
+				connectBtn.textContent = account.substr(0, 6) + "..." + account.substr(38)
+			}			
+		}
 		window.w3 = new Web3(window.ethereum)
 		const savepost = async (event) => {
 			event.preventDefault()

@@ -13,10 +13,12 @@ import (
 
 const account = "0xCbd6073f486714E6641bf87c22A9CEc25aCf5804"
 
+//tehncially feed result is differnt but not usign feed owner yet.
 type UserResult struct {
-	Posts  []zebu.FetchedPost
-	Author string
-	Reader string
+	Posts     []zebu.FetchedPost
+	Author    string
+	AuthorKey string
+	Reader    string
 }
 
 func endpoint() string {
@@ -68,6 +70,8 @@ func TestRand(t *testing.T) {
 		t.Fatalf("author should be empty")
 	}
 
+	//add a test for reader
+
 }
 
 func TestUserAccount(t *testing.T) {
@@ -93,6 +97,10 @@ func TestUserAccount(t *testing.T) {
 	}
 
 	if result.Author != "johnwilkes.northbriton.net" {
+		t.Fatalf("author should be set")
+	}
+
+	if result.AuthorKey != account {
 		t.Fatalf("author should be set")
 	}
 }
