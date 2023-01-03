@@ -169,6 +169,7 @@ type simpleuser struct {
 func userpage(backend zebu.Backend, c *gin.Context) {
 	ctx := c.Request.Context()
 
+	//todo kill this silly type
 	var simpleUser simpleuser
 	if err := c.ShouldBindUri(&simpleUser); err != nil {
 		errorPage(err, c)
@@ -192,6 +193,21 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 	}
 	log.Printf("resolved to %s", account)
 
+	followed := false
+	if myaccount, err := c.Cookie("zebu_account"); err == nil {
+		me, err := backend.GetUserById(ctx, myaccount)
+		if err == nil {
+			log.Printf("seeing if %s is in %v", account, me.Follows)
+			for _, f := range me.Follows {
+				//too expensive for large number of followers? need to cache Resolve.
+				faccount, err := zebu.Resolve(f)
+				if err == nil && faccount == account {
+					followed = true
+				}
+			}
+		}
+	}
+
 	userposts, user, err := userPosts(ctx, backend, account, 10)
 	if err != nil {
 		errorPage(err, c)
@@ -204,6 +220,7 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 			"Posts":          userposts,
 			"UserId":         user.DisplayName,
 			"UserPublicName": user.PublicName,
+			"Followed":       followed,
 		},
 		HTMLName: "index.tmpl"})
 }
@@ -320,7 +337,7 @@ func acceptFollow(backend zebu.UserBackend, c *gin.Context) {
 	if !ff && !faccount {
 		errorPage(fmt.Errorf("need account and followee"), c)
 	}
-
+	log.Printf("got follow %s %s", account, followee)
 	account, err := zebu.Resolve(account)
 	if err != nil {
 		errorPage(err, c)

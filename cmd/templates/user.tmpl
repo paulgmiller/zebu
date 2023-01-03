@@ -10,10 +10,10 @@
 	    <nav class="navbar navbar-expand-lg navbar-light bg-light">
 			<div class="container">
 				<a class="navbar-brand" href="#">Zebu</a>
-				<button id="connect-btn" class="btn btn-primary" disable=true>{{ .UserId}}</button>
+				<button id="connect-btn" class="btn btn-primary" disable=true>{{ .UserId }}</button>
 			</div>
     	</nav>
-		<div><a href="/user/{{ .UserId }}">{{ .UserPublicName }}</a>(ask friends to follow {{ .UserPublicName }})</div>
+		<div><a href="/user/{{ .UserId }}">{{ .UserId }}</a></div>
 		<br />
 		<!-- only show if no name is set -->
 		<form onsubmit="saveregister(event)" >
@@ -28,11 +28,6 @@
 			<br/>
 			<input type="submit" value="Submit">
 		</form >
-		<form onsubmit="follow(event)" >
-			<textarea name="followee" rows="1" cols="64"></textarea>
-			<br/>
-			<input type="submit" value="Follow">
-		</form>
 		<div name="output" ></div>
 		<br/>
 		{{range .Posts}}
@@ -67,24 +62,6 @@
 			console.log(response)
 			location.reload()
 		}
-		const follow = async (event) => {
-			event.preventDefault()
-			var formData = new FormData(event.target)
-			formData.append("account", account)
-			console.log(formData)
-			var response = await fetch("/follow", { method: "POST", body: formData}  )
-			var r2 = response.clone()
-			var data = await response.json()
-			var rawjson = await r2.text()
-			console.log("rawjson: " + rawjson)
-			var signature = await w3.eth.personal.sign(rawjson, account)
-			data.Signature = signature
-			console.log(data)
-			response = await fetch("/sign", { method: "POST", body: JSON.stringify(data)}  )
-			console.log(response)
-			location.reload()
-		}
-
 		const saveregister = async (event) => {
 			event.preventDefault()
 			var formData = new FormData(event.target)

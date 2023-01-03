@@ -13,7 +13,11 @@
 				<button id="connect-btn" class="btn btn-primary" onclick="connect()">Connect to MetaMask</button>
 			</div>
     	</nav>
-		<div>Connect above to post</div>
+		<form onsubmit="follow(event)" >
+			<input type="hidden" name="followee" value="{{ .UserPublicName }}">
+			<input id="follow-btn" type="submit" value="Follow">
+		</form>
+		<br>
 		{{range .Posts}}
 		<div>{{ .RenderedContent }}</div>
 		{{range .Images}}
@@ -25,25 +29,68 @@
         <div><strong>No Posts</strong></div>
         {{end}}
 		<script type="text/javascript">
-      var account = null;
-      const connect = async () => {
-        if (window.ethereum) {
-          await window.ethereum.send('eth_requestAccounts');
-          window.w3 = new Web3(window.ethereum);
-
-          var accounts = await w3.eth.getAccounts();
-          account = accounts[0];
-          
-          var connectBtn = document.getElementById('connect-btn')
-          connectBtn.disabled = true
-          document.cookie = "zebu_account=" + account;
-		  console.log("set cookie zebu_account=" + account)
-		  window.location.reload()
-		} else {		
-		  alert('MetaMask is not installed!');
+		window.w3 = new Web3(window.ethereum)
+		var account = getCookie("zebu_account");
+		if (account != "") {
+			var connectBtn = document.getElementById('connect-btn')
+			connectBtn.disabled = true
+			connectBtn.textContent = account.substr(0, 6) + "..." + account.substr(38)
 		}
-      }
+		if ("{{.Followed}}" == "true") {
+			var followBtn = document.getElementById('follow-btn')
+			followBtn.disabled = true
+			followBtn.textContent = "followed"
+		}
+		
+		const connect = async () => {
+		if (window.ethereum) {
+			await window.ethereum.send('eth_requestAccounts');
+			var accounts = await w3.eth.getAccounts();
+			account = accounts[0];			
+			var connectBtn = document.getElementById('connect-btn')
+			connectBtn.disabled = true
+			connectBtn.textContent = account.substr(0, 6) + "..." + account.substr(38)
+			document.cookie = "zebu_account=" + account;
+			console.log("set cookie zebu_account=" + account)		  
+		} else {		
+			alert('MetaMask is not installed!');
+		}
+		}
+		const follow = async (event) => {
+			event.preventDefault()
+			var formData = new FormData(event.target)
+			formData.append("account", account)
+			console.log(formData)
+			var response = await fetch("/follow", { method: "POST", body: formData}  )
+			var r2 = response.clone()
+			var data = await response.json()
+			var rawjson = await r2.text()
+			console.log("rawjson: " + rawjson)
+			data.Signature = await w3.eth.personal.sign(rawjson, account)
+			console.log(data)
+			response = await fetch("/sign", { method: "POST", body: JSON.stringify(data)}  )
+			console.log(response)
+			var followBtn = document.getElementById('follow-btn')
+			followBtn.disabled = true
+			followBtn.textContent = "followed"
+			//todo unfollow         
+		}
 
+		function getCookie(cname) {
+			let name = cname + "=";
+			let decodedCookie = decodeURIComponent(document.cookie);
+			let ca = decodedCookie.split(';');
+			for(let i = 0; i <ca.length; i++) {
+				let c = ca[i];
+				while (c.charAt(0) == ' ') {
+				c = c.substring(1);
+				}
+				if (c.indexOf(name) == 0) {
+				return c.substring(name.length, c.length);
+				}
+			}
+			return "";
+		}
     </script>
 	</body>
 </html>

@@ -102,13 +102,13 @@ type User struct {
 }
 
 //ugh why doesn't this exist.
-func (u *User) Follow(userCidr string) {
+func (u *User) Follow(user string) {
 	for _, f := range u.Follows {
-		if f == userCidr {
+		if f == user {
 			return
 		}
 	}
-	u.Follows = append(u.Follows, userCidr)
+	u.Follows = append(u.Follows, user)
 }
 
 //previous, contentm and images are all CIDS but we don't recurse automatically using ipfs because we don't want pin all history.
