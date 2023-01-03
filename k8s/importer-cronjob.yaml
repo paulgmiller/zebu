@@ -43,7 +43,7 @@ spec:
           - name: importkeys
             secret:
               secretName: importkeys
-  schedule: '* */4 * * *'
+  schedule: '0 */4 * * *'
   successfulJobsHistoryLimit: 3
   suspend: false
 
