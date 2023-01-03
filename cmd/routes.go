@@ -150,7 +150,6 @@ func userfeed(backend zebu.Backend, c *gin.Context, account string) {
 		Offered: defaultOffered,
 		Data: gin.H{
 			"Posts":          followedposts,
-			"UserId":         account,
 			"UserPublicName": name,
 		},
 		HTMLName: "user.tmpl"})
@@ -194,9 +193,12 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 	log.Printf("resolved to %s", account)
 
 	followed := false
+	reader, readerkey := "", ""
 	if myaccount, err := c.Cookie("zebu_account"); err == nil {
 		me, err := backend.GetUserById(ctx, myaccount)
 		if err == nil {
+			reader = me.Name()
+			readerkey = me.PublicKey()
 			log.Printf("seeing if %s is in %v", account, me.Follows)
 			for _, f := range me.Follows {
 				//too expensive for large number of followers? need to cache Resolve.
@@ -208,7 +210,7 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 		}
 	}
 
-	userposts, user, err := userPosts(ctx, backend, account, 10)
+	userposts, author, err := userPosts(ctx, backend, account, 10)
 	if err != nil {
 		errorPage(err, c)
 		return
@@ -217,10 +219,12 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 	c.Negotiate(http.StatusOK, gin.Negotiate{
 		Offered: defaultOffered,
 		Data: gin.H{
-			"Posts":          userposts,
-			"UserId":         user.DisplayName,
-			"UserPublicName": user.PublicName,
-			"Followed":       followed,
+			"Posts":     userposts,
+			"Author":    author.Name(),
+			"AuthorKey": author.PublicKey(),
+			"Followed":  followed,
+			"Reader":    reader,
+			"ReaderKey": readerkey,
 		},
 		HTMLName: "index.tmpl"})
 }
@@ -237,17 +241,20 @@ func userPosts(ctx context.Context, backend zebu.Backend, account string, count 
 	if err != nil {
 		return nil, user, err
 	}
-	log.Printf("got %d posts for user %s", len(posts), user.DisplayName)
+	author := user.DisplayName
+	if author == "" {
+		author = user.PublicName
+	}
+	log.Printf("got %d posts for user %s", len(posts), author)
 	for _, p := range posts {
 		content, err := zebu.CatString(ctx, backend, p.Content)
 		if err != nil {
 			return nil, user, err
 		}
 		userposts = append(userposts, zebu.FetchedPost{
-			Post:             p,
-			RenderedContent:  template.HTML(content),
-			Author:           user.DisplayName,
-			AuthorPublicName: user.PublicName,
+			Post:            p,
+			RenderedContent: template.HTML(content),
+			Author:          author,
 		})
 	}
 	return userposts, user, nil
@@ -350,6 +357,7 @@ func acceptFollow(backend zebu.UserBackend, c *gin.Context) {
 	}
 
 	user.Follow(followee)
+
 	followrecord, err := backend.SaveUserCid(ctx, user)
 	if err != nil {
 		errorPage(err, c)

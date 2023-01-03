@@ -101,6 +101,17 @@ type User struct {
 	ImportSource string   `json:"ImportSource,omitempty"`
 }
 
+func (u *User) Name() string {
+	if u.DisplayName != "" {
+		return u.DisplayName
+	}
+	return u.PublicName
+}
+
+func (u *User) PublicKey() string {
+	return u.PublicName
+}
+
 //ugh why doesn't this exist.
 func (u *User) Follow(user string) {
 	for _, f := range u.Follows {
@@ -121,7 +132,6 @@ type Post struct {
 
 type FetchedPost struct {
 	Post
-	RenderedContent  template.HTML
-	Author           string
-	AuthorPublicName string
+	RenderedContent template.HTML
+	Author          string
 }

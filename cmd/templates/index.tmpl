@@ -14,7 +14,7 @@
 			</div>
     	</nav>
 		<form onsubmit="follow(event)" >
-			<input type="hidden" name="followee" value="{{ .UserPublicName }}">
+			<input type="hidden" name="followee" value="{{ .Author }}">
 			<input id="follow-btn" type="submit" value="Follow">
 		</form>
 		<br>
@@ -30,31 +30,34 @@
         {{end}}
 		<script type="text/javascript">
 		window.w3 = new Web3(window.ethereum)
-		var account = getCookie("zebu_account");
+		var account = "{{ .Reader }}";
 		if (account != "") {
 			var connectBtn = document.getElementById('connect-btn')
 			connectBtn.disabled = true
-			connectBtn.textContent = account.substr(0, 6) + "..." + account.substr(38)
+			connectBtn.textContent = account
+			if (account.startsWith("0x")) {
+				connectBtn.textContent = account.substr(0, 6) + "..." + account.substr(38)
+			}
+			
 		}
-		if ("{{.Followed}}" == "true") {
+		if ("{{ .Followed }}" == "true") {
 			var followBtn = document.getElementById('follow-btn')
 			followBtn.disabled = true
 			followBtn.textContent = "followed"
 		}
 		
 		const connect = async () => {
-		if (window.ethereum) {
-			await window.ethereum.send('eth_requestAccounts');
-			var accounts = await w3.eth.getAccounts();
-			account = accounts[0];			
-			var connectBtn = document.getElementById('connect-btn')
-			connectBtn.disabled = true
-			connectBtn.textContent = account.substr(0, 6) + "..." + account.substr(38)
-			document.cookie = "zebu_account=" + account;
-			console.log("set cookie zebu_account=" + account)		  
-		} else {		
-			alert('MetaMask is not installed!');
-		}
+			if (window.ethereum) {
+				await window.ethereum.send('eth_requestAccounts');
+				var accounts = await w3.eth.getAccounts();
+				account = accounts[0];			
+				var connectBtn = document.getElementById('connect-btn')
+				document.cookie = "zebu_account=" + account;
+				console.log("set cookie zebu_account=" + account)	
+				location.reload()
+			} else {		
+				alert('MetaMask is not installed!');
+			}
 		}
 		const follow = async (event) => {
 			event.preventDefault()
@@ -76,21 +79,7 @@
 			//todo unfollow         
 		}
 
-		function getCookie(cname) {
-			let name = cname + "=";
-			let decodedCookie = decodeURIComponent(document.cookie);
-			let ca = decodedCookie.split(';');
-			for(let i = 0; i <ca.length; i++) {
-				let c = ca[i];
-				while (c.charAt(0) == ' ') {
-				c = c.substring(1);
-				}
-				if (c.indexOf(name) == 0) {
-				return c.substring(name.length, c.length);
-				}
-			}
-			return "";
-		}
+		
     </script>
 	</body>
 </html>

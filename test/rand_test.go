@@ -13,10 +13,10 @@ import (
 
 const account = "0xCbd6073f486714E6641bf87c22A9CEc25aCf5804"
 
-type PageResult struct {
-	Posts          []zebu.FetchedPost
-	UserId         string
-	UserPublicName string
+type UserResult struct {
+	Posts  []zebu.FetchedPost
+	Author string
+	Reader string
 }
 
 func endpoint() string {
@@ -48,7 +48,7 @@ func TestRand(t *testing.T) {
 	body, err := io.ReadAll(resp.Body)
 	must(err, t, "read")
 	fmt.Println(string(body))
-	var result PageResult
+	var result UserResult
 	err = json.Unmarshal(body, &result)
 	//err = json.NewDecoder(resp.Body).Decode(resp.Body)
 	must(err, t, "decode")
@@ -62,6 +62,10 @@ func TestRand(t *testing.T) {
 	fmt.Printf("authors: %v", authors)
 	if len(authors) < 3 {
 		t.Fatalf("not enough  authors %d", len(authors))
+	}
+
+	if result.Author != "" {
+		t.Fatalf("author should be empty")
 	}
 
 }
@@ -80,11 +84,15 @@ func TestUserAccount(t *testing.T) {
 	body, err := io.ReadAll(resp.Body)
 	must(err, t, "read")
 	fmt.Println(string(body))
-	var result PageResult
+	var result UserResult
 	err = json.Unmarshal(body, &result)
 	//err = json.NewDecoder(resp.Body).Decode(resp.Body)
 	must(err, t, "decode")
 	if len(result.Posts) < 3 {
 		t.Fatalf("too few posts %d", len(result.Posts))
+	}
+
+	if result.Author != "johnwilkes.northbriton.net" {
+		t.Fatalf("author should be set")
 	}
 }
