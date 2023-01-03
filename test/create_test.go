@@ -35,7 +35,7 @@ func TestPost(t *testing.T) {
 	//todo: add image
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint()+"/post", io.NopCloser(buf))
 	must(err, t, "req")
-	req.Header.Set("Content-Type", "multipart/form-data; boundary="+formwriter.Boundary())
+	req.Header.Set("Content-Type", formwriter.FormDataContentType())
 
 	resp, err := http.DefaultClient.Do(req)
 	must(err, t, "do")
