@@ -109,7 +109,7 @@ func rand(backend zebu.Backend, c *gin.Context) {
 		Data: gin.H{
 			"Posts": randposts,
 		},
-		HTMLName: "index.tmpl"})
+		HTMLName: "feed.tmpl"})
 }
 
 //sort by create time. users could lie abotu time but trust for now
@@ -152,7 +152,7 @@ func userfeed(backend zebu.Backend, c *gin.Context, account string) {
 			"Posts":          followedposts,
 			"UserPublicName": name,
 		},
-		HTMLName: "user.tmpl"})
+		HTMLName: "feed.tmpl"})
 
 }
 
@@ -226,7 +226,7 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 			"Reader":    reader,
 			"ReaderKey": readerkey,
 		},
-		HTMLName: "index.tmpl"})
+		HTMLName: "userpage.tmpl"})
 }
 
 func userPosts(ctx context.Context, backend zebu.Backend, account string, count int) ([]zebu.FetchedPost, zebu.User, error) {
