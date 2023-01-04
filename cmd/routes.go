@@ -10,6 +10,7 @@ import (
 	"paulgmiller/zebu/zebu"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -98,18 +99,49 @@ func reader(backend zebu.Backend, c *gin.Context) (zebu.User, error) {
 
 var defaultOffered = []string{"text/html", "application/json"}
 
+//https://go.dev/blog/pipelines
+//https://stackoverflow.com/questions/25142016/how-to-return-a-error-from-a-goroutine-through-channels
+
+type result struct {
+	posts []zebu.FetchedPost
+	err   error
+}
+
+func mergeUsers(ctx context.Context, backend zebu.Backend, users []string, count int) ([]zebu.FetchedPost, error) {
+	results := make(chan result)
+	allposts := []zebu.FetchedPost{}
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	for _, u := range users {
+		wg.Add(1)
+		go func(user string) {
+			defer wg.Done()
+			posts, _, err := userPosts(ctx, backend, user, count)
+			results <- result{posts, err}
+		}(u)
+	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+	for r := range results {
+		if r.err != nil {
+			return nil, r.err
+		}
+		allposts = append(allposts, r.posts...)
+	}
+	return allposts, nil
+}
+
 func rand(backend zebu.Backend, c *gin.Context) {
 	users := backend.RandomUsers(3)
 	log.Printf("getting random users %v", users)
-	randposts := []zebu.FetchedPost{}
 	ctx := c.Request.Context()
-	for _, u := range users {
-		posts, _, err := userPosts(ctx, backend, u, 3)
-		if err != nil {
-			errorPage(err, c)
-			return
-		}
-		randposts = append(randposts, posts...)
+	randposts, err := mergeUsers(ctx, backend, users, 3)
+	if err != nil {
+		errorPage(err, c)
+		return
 	}
 	sortposts(randposts)
 
@@ -144,17 +176,11 @@ func userfeed(backend zebu.Backend, c *gin.Context, account string) {
 		errorPage(err, c)
 		return
 	}
-	var followedposts []zebu.FetchedPost
-	for _, follow := range me.Follows {
-		posts, _, err := userPosts(ctx, backend, follow, 10)
-		if err != nil {
-			errorPage(err, c)
-			return
-		}
-		followedposts = append(followedposts, posts...)
-
+	followedposts, err := mergeUsers(ctx, backend, me.Follows, 3)
+	if err != nil {
+		errorPage(err, c)
+		return
 	}
-
 	//show them random users if they have no one to follow? nah do this on html
 
 	sortposts(followedposts)
