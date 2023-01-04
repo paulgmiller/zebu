@@ -82,7 +82,7 @@ func serve(backend zebu.Backend) {
 		c.DataFromReader(http.StatusOK, int64(buf.Len()), "image/*", buf, map[string]string{})
 	})
 
-	router.Static("/static", "./static")
+	router.StaticFS("/static", loadStatic())
 
 	log.Print(router.Run(":9000").Error())
 }
