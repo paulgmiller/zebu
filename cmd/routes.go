@@ -328,7 +328,13 @@ func acceptPost(backend zebu.Backend, c *gin.Context) {
 
 	log.Printf("got post %v", form)
 
-	poster, err := backend.GetUserById(ctx, form.Value["account"][0])
+	user, err := zebu.Resolve(form.Value["account"][0])
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
+
+	poster, err := backend.GetUserById(ctx, user)
 	if err != nil {
 		return
 	}
@@ -398,6 +404,12 @@ func acceptFollow(backend zebu.UserBackend, c *gin.Context) {
 		errorPage(err, c)
 	}
 
+	//resolve folowee so we don't add garbage?
+	_, err = zebu.Resolve(account)
+	if err != nil {
+		errorPage(err, c)
+		return
+	}
 	user.Follow(followee)
 
 	followrecord, err := backend.SaveUserCid(ctx, user)

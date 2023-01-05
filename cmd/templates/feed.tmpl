@@ -43,6 +43,7 @@
 		<!-- credit view-source:https://shobhitic.github.io/ethsign/ -->
 		<script type="text/javascript">
 		var account = "{{ .Reader }}";
+		var accountKey = "{{ .ReaderKey }}";
 		if (account != "") {
 			var connectBtn = document.getElementById('connect-btn')
 			connectBtn.disabled = true
@@ -68,7 +69,7 @@
 			//error if data already has signature?
 			var rawjson = await r2.text()
 			console.log("rawjson: " + rawjson)
-			var signature = await w3.eth.personal.sign(rawjson, account)
+			var signature = await w3.eth.personal.sign(rawjson, accountKey)
 			data.Signature = signature
 			console.log(data)
 			response = await fetch("/sign", { method: "POST", body: JSON.stringify(data)}  )
@@ -85,7 +86,7 @@
 			var data = await response.json()
 			var rawjson = await r2.text()
 			console.log("rawjson: " + rawjson)
-			var signature = await w3.eth.personal.sign(rawjson, account)
+			var signature = await w3.eth.personal.sign(rawjson, accountKey)
 			data.Signature = signature
 			console.log(data)
 			response = await fetch("/sign", { method: "POST", body: JSON.stringify(data)}  )
