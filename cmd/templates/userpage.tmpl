@@ -31,6 +31,7 @@
 		<script type="text/javascript">
 		window.w3 = new Web3(window.ethereum)
 		var account = "{{ .Reader }}";
+		var accountKey = "{{ .ReaderKey }}";
 		if (account != "") {
 			var connectBtn = document.getElementById('connect-btn')
 			connectBtn.disabled = true
@@ -69,7 +70,7 @@
 			var data = await response.json()
 			var rawjson = await r2.text()
 			console.log("rawjson: " + rawjson)
-			data.Signature = await w3.eth.personal.sign(rawjson, account)
+			data.Signature = await w3.eth.personal.sign(rawjson, accountKey)
 			console.log(data)
 			response = await fetch("/sign", { method: "POST", body: JSON.stringify(data)}  )
 			console.log(response)
