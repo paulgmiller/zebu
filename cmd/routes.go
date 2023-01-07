@@ -102,14 +102,8 @@ var defaultOffered = []string{"text/html", "application/json"}
 //https://go.dev/blog/pipelines
 //https://stackoverflow.com/questions/25142016/how-to-return-a-error-from-a-goroutine-through-channels
 
-type result struct {
-	posts []zebu.FetchedPost
-	err   error
-}
-
-func mergeUsers(ctx context.Context, backend zebu.Backend, users []string, count int) ([]zebu.FetchedPost, error) {
-	results := make(chan result)
-	allposts := []zebu.FetchedPost{}
+func mergeUsers(ctx context.Context, backend zebu.Backend, users []string, count int) <-chan zebu.FetchedPost {
+	var allposts = make(chan zebu.FetchedPost)
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -117,32 +111,45 @@ func mergeUsers(ctx context.Context, backend zebu.Backend, users []string, count
 		wg.Add(1)
 		go func(user string) {
 			defer wg.Done()
-			posts, _, err := userPosts(ctx, backend, user, count)
-			results <- result{posts, err}
+
+			author, err := backend.GetUserById(ctx, user)
+			if err != nil {
+				fallback := fmt.Sprintf("error getting user %s, %s", user, err)
+				log.Printf(fallback)
+				allposts <- zebu.FetchedPost{RenderedContent: template.HTML(fallback), Author: user, Post: zebu.Post{}}
+				return
+			}
+
+			for p := range userPosts(ctx, backend, author, count) {
+				allposts <- p
+			}
+
 		}(u)
 	}
 	go func() {
 		wg.Wait()
-		close(results)
+		close(allposts)
 	}()
-	for r := range results {
-		if r.err != nil {
-			return nil, r.err
-		}
-		allposts = append(allposts, r.posts...)
+
+	return allposts
+}
+
+//really no library for this?
+func ToSlice[T any](ch <-chan T) []T {
+	ts := make([]T, 0)
+	for t := range ch {
+		ts = append(ts, t)
 	}
-	return allposts, nil
+	return ts
 }
 
 func rand(backend zebu.Backend, c *gin.Context) {
 	users := backend.RandomUsers(3)
 	log.Printf("getting random users %v", users)
 	ctx := c.Request.Context()
-	randposts, err := mergeUsers(ctx, backend, users, 3)
-	if err != nil {
-		errorPage(err, c)
-		return
-	}
+	randpostchan := mergeUsers(ctx, backend, users, 3)
+
+	randposts := ToSlice(randpostchan)
 	sortposts(randposts)
 
 	reader, err := reader(backend, c)
@@ -176,13 +183,10 @@ func userfeed(backend zebu.Backend, c *gin.Context, account string) {
 		errorPage(err, c)
 		return
 	}
-	followedposts, err := mergeUsers(ctx, backend, me.Follows, 3)
-	if err != nil {
-		errorPage(err, c)
-		return
-	}
-	//show them random users if they have no one to follow? nah do this on html
+	followedpostschan := mergeUsers(ctx, backend, me.Follows, 3)
 
+	//show them random users if they have no one to follow? nah do this on html
+	followedposts := ToSlice(followedpostschan)
 	sortposts(followedposts)
 	name := me.DisplayName
 	if name == "" {
@@ -252,16 +256,18 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 		}
 	}
 
-	userposts, author, err := userPosts(ctx, backend, account, 10)
+	author, err := backend.GetUserById(ctx, account)
 	if err != nil {
 		errorPage(err, c)
 		return
 	}
 
+	userposts := userPosts(ctx, backend, author, 10)
+
 	c.Negotiate(http.StatusOK, gin.Negotiate{
 		Offered: defaultOffered,
 		Data: gin.H{
-			"Posts":     userposts,
+			"Posts":     ToSlice(userposts),
 			"Author":    author.Name(),
 			"AuthorKey": author.PublicKey(),
 			"Followed":  followed,
@@ -271,36 +277,33 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 		HTMLName: "userpage.tmpl"})
 }
 
-func userPosts(ctx context.Context, backend zebu.Backend, account string, count int) ([]zebu.FetchedPost, zebu.User, error) {
+func userPosts(ctx context.Context, backend zebu.Backend, user zebu.User, count int) <-chan zebu.FetchedPost {
 
-	user, err := backend.GetUserById(ctx, account)
-	if err != nil {
-		return nil, zebu.User{}, err
-	}
+	posts := backend.GetPosts(ctx, user, count)
+	var wg sync.WaitGroup
+	var userposts = make(chan zebu.FetchedPost, count)
+	for p := range posts {
+		wg.Add(1)
+		go func(p zebu.Post) {
+			defer wg.Done()
+			content, err := zebu.CatString(ctx, backend, p.Content)
+			if err != nil {
+				content = fmt.Sprintf("error rendering post: %s %s", err.Error())
+			}
 
-	var userposts []zebu.FetchedPost
-	posts, err := backend.GetPosts(ctx, user, count)
-	if err != nil {
-		return nil, user, err
+			userposts <- zebu.FetchedPost{
+				Post:            p,
+				RenderedContent: template.HTML(content),
+				Author:          user.Name(),
+			}
+		}(p)
 	}
-	author := user.DisplayName
-	if author == "" {
-		author = user.PublicName
-	}
-	log.Printf("got %d posts for user %s", len(posts), author)
-	for _, p := range posts {
-		content, err := zebu.CatString(ctx, backend, p.Content)
-		if err != nil {
-			return nil, user, err
-		}
+	go func() {
+		wg.Wait()
+		close(userposts)
+	}()
 
-		userposts = append(userposts, zebu.FetchedPost{
-			Post:            p,
-			RenderedContent: template.HTML(content),
-			Author:          author,
-		})
-	}
-	return userposts, user, nil
+	return userposts
 }
 
 func sign(backend zebu.UserBackend, c *gin.Context) {

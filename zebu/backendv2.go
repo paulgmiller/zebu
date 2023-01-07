@@ -40,7 +40,7 @@ type Healthz interface {
 }
 
 type ContentBackend interface {
-	GetPosts(ctx context.Context, user User, count int) ([]Post, error)
+	GetPosts(ctx context.Context, user User, count int) <-chan Post
 	SavePost(ctx context.Context, post Post) (string, error)
 	//too low level? used for images currently
 	Cat(ctx context.Context, cid string) (io.ReadCloser, error)
@@ -418,17 +418,23 @@ func (b *IpfsBackend) PublishUser(ctx context.Context, u UserNameRecord) error {
 }
 
 //offset
-func (b *IpfsBackend) GetPosts(ctx context.Context, user User, count int) ([]Post, error) {
+func (b *IpfsBackend) GetPosts(ctx context.Context, user User, count int) <-chan Post {
+	var posts = make(chan Post) //could buffer count buut current consumers pull these off prety fast.
 	head := user.LastPost
-	var posts []Post
-	for i := 0; head != "" && i < count; i++ {
-		var post Post
-		if err := b.readJson(head, &post); err != nil {
-			return posts, fmt.Errorf("can't resolve content %s: %w", head, err)
+	go func() {
+		for i := 0; head != "" && i < count; i++ {
+			var post Post
+			if err := b.readJson(head, &post); err != nil {
+				fallback := fmt.Sprintf("Error can't resolve content %s: %s", head, err)
+				log.Print(fallback)
+				posts <- Post{Content: fallback}
+				close(posts)
+				return
+			}
+			posts <- post
+			head = post.Previous
 		}
-		posts = append(posts, post)
-		head = post.Previous
-	}
-	//log.Printf("got %d posts from %s", len(posts), user.PublicName)
-	return posts, nil
+		close(posts)
+	}()
+	return posts
 }

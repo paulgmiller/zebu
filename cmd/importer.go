@@ -162,13 +162,10 @@ func Crawl(ctx context.Context, xmlurl string, author zebu.User, b zebu.Backend)
 		return "", fmt.Errorf("%s fetching %s", err, xmlurl)
 	}
 
-	exisitngposts, err := b.GetPosts(ctx, author, 10)
-	if err != nil {
-		return "", fmt.Errorf("%s parsing %s", err, xmlurl)
-	}
+	exisitngposts := b.GetPosts(ctx, author, 10)
 
 	oldposts := map[string]zebu.Post{}
-	for _, p := range exisitngposts {
+	for p := range exisitngposts {
 		oldposts[p.Content] = p
 	}
 
