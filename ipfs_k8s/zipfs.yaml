@@ -17,7 +17,7 @@ spec:
         app: zipfs
     spec:
       containers:
-      - image: paulgmiller/zipfs:0.17.0
+      - image: paulgmiller/zipfs:0.17.1
         imagePullPolicy: Always
         name: zipfs
         resources: 

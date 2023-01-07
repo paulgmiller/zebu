@@ -36,6 +36,13 @@ ipfs config --json Addresses.AppendAnnounce '["/ip4/20.150.158.188/tcp/4001"]'
 #turn on pubsub.
 ipfs config --json Ipns.UsePubsub true
 
+#turn down the connections in connection 
+#trying to save bandwidth 
+#https://github.com/ipfs/kubo/issues/9420
+#https://github.com/ipfs/kubo/pull/9467/files
+ipfs config  --json Swarm.ConnMgr.HighWater 40
+ipfs config  --json Swarm.ConnMgr.LowWater 20
+
 #use fly-global-services https://fly.io/docs/app-guides/udp-and-tcp/#udp-must-listen-on-the-same-port-externally-and-internally
 #but didn't parse
 ipfs config --json Addresses.Swarm '["/ip4/0.0.0.0/tcp/4001", "/ip6/::/tcp/4001", "/ip4/0.0.0.0/udp/4001/quic","/ip6/::/udp/4001/quic"]'
