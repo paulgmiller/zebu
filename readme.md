@@ -6,9 +6,9 @@ https://paulgmiller.github.io/2021/02/07/Distributed-Twitter.html
 ## TODO 
 
 ## Basics
-simple follow links
+allow to re-register
 
-###Bandwidth
+### Bandwidth
 
 Running ipfs in the cloud is a expensive bandwidth wise 
 Here's ipfs stats over 5 days. 
@@ -46,14 +46,7 @@ https://github.com/ipfs/go-ds-s3
 ## scale ipfs
 loadbalancer with different ports
 optionally return imags through cloudflare ipfs gateway 
-
-
-## move to new ipfs api
-gets us timeouts for not found
-
-### ENS  and dns integration
-https://github.com/web3/web3.js/issues/2683
-let them register after connect
+look at cluster ipfs and hole punching 
 
 
 ### protect against spam. 
