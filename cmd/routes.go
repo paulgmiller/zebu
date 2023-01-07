@@ -293,6 +293,7 @@ func userPosts(ctx context.Context, backend zebu.Backend, account string, count 
 		if err != nil {
 			return nil, user, err
 		}
+
 		userposts = append(userposts, zebu.FetchedPost{
 			Post:            p,
 			RenderedContent: template.HTML(content),

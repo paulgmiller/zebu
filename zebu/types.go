@@ -130,8 +130,19 @@ type Post struct {
 	Created  time.Time //can't actually trust this
 }
 
+//this is never meant to be a backend  contract and just a ui helper.
 type FetchedPost struct {
 	Post
 	RenderedContent template.HTML
-	Author          string
+	Author          string //this can be a lie if I repost someone elses thing.
+}
+
+func (fp FetchedPost) PrettyCreated() string {
+
+	prettyTime := fp.Post.Created.Format("Jan 2, 2006")
+	ago := time.Now().Sub(fp.Post.Created)
+	if ago < 24*time.Hour {
+		prettyTime = fmt.Sprintf("%dh %dm ago")
+	}
+	return prettyTime
 }
