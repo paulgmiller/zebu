@@ -3,6 +3,7 @@ package zebu
 import (
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/storyicon/sigverify"
@@ -84,4 +85,16 @@ func TestSigning(t *testing.T) {
 	if !unr.Validate() {
 		t.Fatalf("failed to validate %v", unr)
 	}
+}
+
+//Tests that Post PrettyCreate returns expected old and recent values
+func TestPrettyCreated(t *testing.T) {
+
+	ago := -time.Hour + (15 * time.Minute)
+	p := FetchedPost{Post: Post{Created: time.Now().Add(ago)}}
+	prety := p.PrettyCreated()
+	if prety != "1h 45m ago" {
+		t.Fatalf("expected 1 hour ago, got %s", prety)
+	}
+
 }
