@@ -142,7 +142,11 @@ func (fp FetchedPost) PrettyCreated() string {
 	prettyTime := fp.Post.Created.Format("Jan 2, 2006")
 	ago := time.Now().Sub(fp.Post.Created)
 	if ago < 24*time.Hour {
-		prettyTime = fmt.Sprintf("%.fh %.fm ago", ago.Hours(), ago.Minutes())
+		//wrong need to shave hours off minutes
+		rounded := ago.Round(time.Minute)
+		pretty := strings.Replace(rounded.String(), "0s", "", 1)
+		pretty = strings.Replace(pretty, "h", "h ", 1)
+		prettyTime = fmt.Sprintf("%s ago", pretty)
 	}
 	return prettyTime
 }

@@ -90,10 +90,10 @@ func TestSigning(t *testing.T) {
 //Tests that Post PrettyCreate returns expected old and recent values
 func TestPrettyCreated(t *testing.T) {
 
-	ago := -time.Hour + (15 * time.Minute)
+	ago := -time.Hour - (15 * time.Minute)
 	p := FetchedPost{Post: Post{Created: time.Now().Add(ago)}}
 	prety := p.PrettyCreated()
-	if prety != "1h 45m ago" {
+	if prety != "1h 15m ago" {
 		t.Fatalf("expected 1 hour ago, got %s", prety)
 	}
 
