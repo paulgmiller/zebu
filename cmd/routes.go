@@ -17,7 +17,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
-	ginmiddleware "github.com/slok/go-http-metrics/middleware/gin"
 )
 
 func replaceUrlKeys(c *gin.Context) string {
@@ -32,16 +31,14 @@ func serve(backend zebu.Backend) {
 	router := gin.New()
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{"/healthz"}}), gin.Recovery())
 
-	prommdlw := middleware.New(middleware.Config{
+	router.Use(promHandler(middleware.New(middleware.Config{
 		Recorder: metrics.NewRecorder(metrics.Config{}),
-	})
-
-	router.Use(ginmiddleware.Handler("", prommdlw))
+	})))
 
 	//https://gin-gonic.com/docs/examples/bind-single-binary-with-template/
 	t, err := loadTemplates()
 	if err != nil {
-		log.Fatalf("couldnt load template, %s", err)
+		log.Fatalf("couldn't load template, %s", err)
 	}
 	router.SetHTMLTemplate(t)
 	router.GET("/", func(c *gin.Context) {
