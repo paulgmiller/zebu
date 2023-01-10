@@ -318,6 +318,12 @@ func (b *IpfsBackend) SavePost(ctx context.Context, post Post) (string, error) {
 }
 
 func (b *IpfsBackend) Cat(ctx context.Context, cidstr string) (io.ReadCloser, error) {
+	start := time.Now()
+	defer func() {
+		latency := time.Now().Sub(start)
+		catHist.Observe(latency.Seconds())
+	}()
+
 	cid, err := cidlib.Parse(cidstr)
 	if err != nil {
 		return nil, err
