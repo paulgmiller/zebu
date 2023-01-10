@@ -14,7 +14,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	ginprometheus "github.com/zsais/go-gin-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
+	"github.com/slok/go-http-metrics/middleware"
+	ginmiddleware "github.com/slok/go-http-metrics/middleware/gin"
 )
 
 func replaceUrlKeys(c *gin.Context) string {
@@ -29,10 +32,11 @@ func serve(backend zebu.Backend) {
 	router := gin.New()
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{"/healthz"}}), gin.Recovery())
 
-	p := ginprometheus.NewPrometheus("gin")
+	prommdlw := middleware.New(middleware.Config{
+		Recorder: metrics.NewRecorder(metrics.Config{}),
+	})
 
-	p.ReqCntURLLabelMappingFn = replaceUrlKeys
-	p.Use(router)
+	router.Use(ginmiddleware.Handler("", prommdlw))
 
 	//https://gin-gonic.com/docs/examples/bind-single-binary-with-template/
 	t, err := loadTemplates()
@@ -98,6 +102,8 @@ func serve(backend zebu.Backend) {
 	})
 
 	router.StaticFS("/static", loadStatic())
+
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	log.Print(router.Run(":9000").Error())
 
