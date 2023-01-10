@@ -14,11 +14,25 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
+
+func replaceUrlKeys(c *gin.Context) string {
+	url := c.Request.URL.Path
+	for _, p := range c.Params {
+		url = strings.Replace(url, p.Value, ":"+p.Key, 1)
+	}
+	return url
+}
 
 func serve(backend zebu.Backend) {
 	router := gin.New()
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{"/healthz"}}), gin.Recovery())
+
+	p := ginprometheus.NewPrometheus("gin")
+
+	p.ReqCntURLLabelMappingFn = replaceUrlKeys
+	p.Use(router)
 
 	//https://gin-gonic.com/docs/examples/bind-single-binary-with-template/
 	t, err := loadTemplates()
@@ -86,6 +100,7 @@ func serve(backend zebu.Backend) {
 	router.StaticFS("/static", loadStatic())
 
 	log.Print(router.Run(":9000").Error())
+
 }
 
 func reader(backend zebu.Backend, c *gin.Context) (zebu.User, error) {
