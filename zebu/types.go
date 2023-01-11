@@ -96,9 +96,15 @@ func (unr *UserNameRecord) Sign(privatekey *ecdsa.PrivateKey) error {
 type User struct {
 	LastPost     string
 	Follows      []string //store ens/dns display names and resolve when needed
+	Likes        string   //points to a LikeChunk
 	DisplayName  string   //ens or dns name
 	PublicName   string   //public key
 	ImportSource string   `json:"ImportSource,omitempty"`
+}
+
+type LikeChunk struct {
+	Previous string
+	Likes    []string
 }
 
 func (u *User) Name() string {
@@ -128,6 +134,7 @@ type Post struct {
 	Content  string
 	Images   []string  //this makes it hard to do images inline? don't care?
 	Created  time.Time //can't actually trust this
+	Author   string    //publicname?
 }
 
 //this is never meant to be a backend  contract and just a ui helper.

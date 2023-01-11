@@ -392,6 +392,7 @@ func acceptPost(backend zebu.Backend, c *gin.Context) {
 		Content:  cid,
 		Created:  time.Now().UTC(),
 		Images:   imagecidrs,
+		Author:   poster.Name(),
 	}
 	postcidr, err := backend.SavePost(ctx, post)
 	if err != nil {
