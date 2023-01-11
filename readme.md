@@ -7,6 +7,9 @@ https://paulgmiller.github.io/2021/02/07/Distributed-Twitter.html
 
 ## Basics
 allow to re-register
+likes 
+individual post url
+retweets?
 
 ### Bandwidth
 
@@ -30,13 +33,14 @@ https://github.com/ipfs/kubo/issues/3429
 https://github.com/ipfs/kubo/issues/3065
 https://github.com/libp2p/research/pull/4
 
+highwater mark took us to 20gig/day. lets see if dhtclient is better.
 
 ### UI 
 * Limit posts with option to see more
-* fix date formatting
 * better image galleries.
 * https://galleriajs.github.io/themes/
 * https://www.liwen.id.au/heg/
+* better buttons for moblie. Hell maybe a mobile app
 
 ### Embed ipfs?
 Or use infura / web3.storage for hosted version
@@ -52,8 +56,8 @@ look at cluster ipfs and hole punching
 ### protect against spam. 
 Look at addreses account balance integral  of period 
 
-
 ## run importer
+let rss feeds get added through api
 nitter has rss feeds. Let people follow people on twitter that way? 
 https://nitter.net/about
 
@@ -62,7 +66,7 @@ https://nitter.net/about
 ## e2e test. !!!
 * Create a new account
 * register a dns name
-* follow johnwilkes.northbriton.net and some imported rss fee.d
+* follow johnwilkes.northbriton.net and some imported rss feed
  
 
 ## parallize fetching.
@@ -72,5 +76,3 @@ https://nitter.net/about
 * show random posts? Dangerous?
 
 
-## retweets and likes
-accumulate several likes before signing?
