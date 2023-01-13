@@ -120,8 +120,7 @@ func (b *IpfsBackend) RandomUsers(n int) []string {
 		}
 		var user User
 		err := b.readJson(unr.CID, &user)
-
-		if (err == nil) || user.DisplayName == "" {
+		if err != nil || user.DisplayName == "" {
 			continue
 		}
 		users = append(users, k)

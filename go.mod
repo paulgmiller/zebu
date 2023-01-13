@@ -15,6 +15,8 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
 	github.com/mmcdole/gofeed v1.1.3
 	github.com/multiformats/go-multiaddr v0.5.0
+	github.com/prometheus/client_golang v1.11.0
+	github.com/samber/lo v1.37.0
 	github.com/slok/go-http-metrics v0.10.0
 	github.com/storyicon/sigverify v1.1.0
 	github.com/wealdtech/go-ens/v3 v3.4.5
@@ -90,7 +92,6 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e // indirect
-	github.com/prometheus/client_golang v1.11.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.28.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
@@ -110,6 +111,7 @@ require (
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.16.0 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/exp v0.0.0-20220426173459-3bcf042a4bf5 // indirect
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect

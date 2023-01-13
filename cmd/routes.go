@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/samber/lo"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
 )
@@ -152,22 +153,13 @@ func mergeUsers(ctx context.Context, backend zebu.Backend, users []string, count
 	return allposts
 }
 
-//really no library for this?
-func ToSlice[T any](ch <-chan T) []T {
-	ts := make([]T, 0)
-	for t := range ch {
-		ts = append(ts, t)
-	}
-	return ts
-}
-
 func rand(backend zebu.Backend, c *gin.Context) {
 	users := backend.RandomUsers(3)
 	log.Printf("getting random users %v", users)
 	ctx := c.Request.Context()
 	randpostchan := mergeUsers(ctx, backend, users, 3)
 
-	randposts := ToSlice(randpostchan)
+	randposts := lo.ChannelToSlice(randpostchan)
 	sortposts(randposts)
 
 	reader, err := reader(backend, c)
@@ -204,7 +196,7 @@ func userfeed(backend zebu.Backend, c *gin.Context, account string) {
 	followedpostschan := mergeUsers(ctx, backend, me.Follows, 3)
 
 	//show them random users if they have no one to follow? nah do this on html
-	followedposts := ToSlice(followedpostschan)
+	followedposts := lo.ChannelToSlice(followedpostschan)
 	sortposts(followedposts)
 	name := me.DisplayName
 	if name == "" {
@@ -285,7 +277,7 @@ func userpage(backend zebu.Backend, c *gin.Context) {
 	c.Negotiate(http.StatusOK, gin.Negotiate{
 		Offered: defaultOffered,
 		Data: gin.H{
-			"Posts":     ToSlice(userposts),
+			"Posts":     lo.ChannelToSlice(userposts),
 			"Author":    author.Name(),
 			"AuthorKey": author.PublicKey(),
 			"Followed":  followed,
