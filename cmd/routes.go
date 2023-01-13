@@ -400,7 +400,7 @@ func acceptPost(backend zebu.Backend, c *gin.Context) {
 		return
 	}
 	poster.LastPost = postcidr
-	posterrecord, err := backend.SaveUserCid(ctx, poster) //ignoring erros for now
+	posterrecord, err := backend.SaveUserCid(ctx, poster)
 	if err != nil {
 		errorPage(err, c)
 		return

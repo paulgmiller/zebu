@@ -114,9 +114,15 @@ func (b *IpfsBackend) RandomUsers(n int) []string {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 	users := []string{}
-	for k := range b.records {
+	for k, unr := range b.records {
 		if n <= 0 {
 			break
+		}
+		var user User
+		err := b.readJson(unr.CID, &user)
+
+		if (err == nil) || user.DisplayName == "" {
+			continue
 		}
 		users = append(users, k)
 		n -= 1
@@ -175,6 +181,7 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 			}
 
 			func() {
+				//don't save if user doesn't have name != key?
 				b.lock.Lock()
 				defer b.lock.Unlock()
 				existing := b.records[unr.PubKey]
@@ -271,6 +278,7 @@ func (b *IpfsBackend) loadRecords(ctx context.Context) {
 		if err != nil {
 			log.Fatalf("could't read user %s: %s", f.Name, err)
 		}
+		//don't save if user doesn't have name != key?
 		b.records[unr.PubKey] = unr
 	}
 }

@@ -23,7 +23,7 @@ spec:
         app: zebu
     spec:
       containers:
-      - image: paulgmiller/zebu:2f4c891
+      - image: paulgmiller/zebu:c87383e
         name: zebu
         resources: 
           requests:
