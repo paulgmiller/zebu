@@ -186,6 +186,16 @@ func (b *IpfsBackend) listen(ctx context.Context) error {
 				existing := b.records[unr.PubKey]
 				if unr.Sequence > existing.Sequence {
 					log.Printf("update is new %s %d,%d", unr.PubKey, unr.Sequence, existing.Sequence)
+					var user User
+					err := b.readJson(unr.CID, &user)
+					if err != nil {
+						log.Printf("unable to read user %s at %s", unr.PubKey, unr.CID)
+						return
+					}
+					if user.DisplayName == "" {
+						log.Printf("user has no name %s", unr.PubKey)
+						return
+					}
 					b.records[unr.PubKey] = *unr
 					usertopic := centraltopic + "/" + string(unr.PubKey)
 					if err := b.shell.FilesWrite(ctx, usertopic, bytes.NewReader(msg.Data()), ipfs.FilesWrite.Create(true), ipfs.FilesWrite.Parents(true)); err != nil {
@@ -276,6 +286,11 @@ func (b *IpfsBackend) loadRecords(ctx context.Context) {
 		err = json.NewDecoder(reader).Decode(&unr)
 		if err != nil {
 			log.Fatalf("could't read user %s: %s", f.Name, err)
+		}
+		var user User
+		err = b.readJson(unr.CID, &user)
+		if err != nil || user.DisplayName == "" {
+			continue
 		}
 		//don't save if user doesn't have name != key?
 		b.records[unr.PubKey] = unr
