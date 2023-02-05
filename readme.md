@@ -33,7 +33,9 @@ https://github.com/ipfs/kubo/issues/3429
 https://github.com/ipfs/kubo/issues/3065
 https://github.com/libp2p/research/pull/4
 
-highwater mark took us to 20gig/day. lets see if dhtclient is better.
+Not seeing much improvment though so posting here: https://github.com/ipfs/kubo/issues/3065#issuecomment-1416903788
+
+https://github.com/ipfs/kubo/issues/3065
 
 ### UI 
 * Limit posts with option to see more

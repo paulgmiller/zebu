@@ -17,7 +17,7 @@ spec:
         app: zipfs
     spec:
       containers:
-      - image: paulgmiller/zipfs:0.17.1
+      - image: paulgmiller/zipfs:0.17.2
         imagePullPolicy: Always
         name: zipfs
         resources: 
@@ -28,21 +28,21 @@ spec:
             cpu: 1
             memory: 1Gi
         volumeMounts:
-        - name: zipfsdisks
+        - name: zipfsdisks2
           mountPath: /data/ipfs
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
   volumeClaimTemplates:
   - metadata:
-      name: zipfsdisks
+      name: zipfsdisks2
     spec:
       accessModes:
       - ReadWriteOnce
       storageClassName: managed-csi
       resources:
         requests:
-          storage: 5Gi
+          storage: 10Gi
 
 
 

@@ -31,7 +31,7 @@ ipfs config Addresses.API --json '["/ip4/0.0.0.0/tcp/5001", "/ip6/::/tcp/5001"]'
 ## Note that it must be 1-1, you can't point at multiple go-ipfs nodes and expect it to work
 # echo "ipfs-config: setting Addresses.AppendAnnounce config"
 # TODO: Enable this line with the IPv4 of the 
-ipfs config --json Addresses.AppendAnnounce '["/ip4/20.150.158.188/tcp/4001"]'
+ipfs config --json Addresses.AppendAnnounce '["/ip4/20.150.158.188/tcp/4001", "/ip4/20.150.158.188/udp/4001/quic"]'
 
 #turn on pubsub.
 ipfs config --json Ipns.UsePubsub true
@@ -40,8 +40,10 @@ ipfs config --json Ipns.UsePubsub true
 #trying to save bandwidth 
 #https://github.com/ipfs/kubo/issues/9420
 #https://github.com/ipfs/kubo/pull/9467/files
-ipfs config  --json Swarm.ConnMgr.HighWater 40
-ipfs config  --json Swarm.ConnMgr.LowWater 20
+ipfs config  --json Swarm.ConnMgr.HighWater 10
+ipfs config  --json Swarm.ConnMgr.LowWater 5
+#i think this will have consquences and isn't being a good citizen buit leave on till we want to burn azure money
+ipfs config Routing.Type dhtclient
 
 #use fly-global-services https://fly.io/docs/app-guides/udp-and-tcp/#udp-must-listen-on-the-same-port-externally-and-internally
 #but didn't parse
