@@ -12,6 +12,7 @@ const nobody = "nobody"
 
 func main() {
 	//https://github.com/urfave/cli/blob/master/docs/v2/manual.md#subcommands
+	//https://github.com/spf13/viper
 	resolve := flag.String("resolve", nobody, "look them up")
 	opmlpath := flag.String("import", "", "import an opml feed")
 	//unfollow := flag.String("unfollow", "nobody", "remove somone to your follows")
