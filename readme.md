@@ -12,30 +12,9 @@ individual post url
 retweets?
 
 ### Bandwidth
+Had to limit using resource manger which is sub-optimal. Trying to figure out why
+https://discuss.ipfs.tech/t/high-bandwidth-usage-by-ipfs-id-push-1-0-0/15950/2
 
-Running ipfs in the cloud is a expensive bandwidth wise 
-Here's ipfs stats over 5 days. 
-
-k exec zipfs-0  -- ipfs stats bw
-Bandwidth
-TotalIn: 107 GB
-TotalOut: 109 GB
-RateIn: 116 kB/s
-RateOut: 102 kB/s
-
-Probably related to number of peers and kadmala. 
-k exec zipfs-0  -- ipfs swarm peers | wc -l
-1323
-
-connmgr.highwatermark and routing=dhtclient seem to be two options
-
-https://github.com/ipfs/kubo/issues/3429
-https://github.com/ipfs/kubo/issues/3065
-https://github.com/libp2p/research/pull/4
-
-Not seeing much improvment though so posting here: https://github.com/ipfs/kubo/issues/3065#issuecomment-1416903788
-
-https://github.com/ipfs/kubo/issues/3065
 
 ### UI 
 * Limit posts with option to see more
